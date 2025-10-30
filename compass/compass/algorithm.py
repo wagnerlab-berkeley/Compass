@@ -65,14 +65,14 @@ def singleSampleCompass(data, model, media, directory, sample_name, sample_index
         args['save_argmaxes_dir'] = None
 
     model = models.init_model(model=model, species=args['species'],
-                       exchange_limit=EXCHANGE_LIMIT, media=args['media'], 
+                       exchange_limit=EXCHANGE_LIMIT, media=args['media'],
                        isoform_summing=args['isoform_summing'], metabolic_model_dir=metabolic_model_dir)
 
     logger.info("Running COMPASS on model: %s", model.name)
 
     perf_log = None
     if args['detailed_perf']:
-        cols = ['order','max rxn time', 'max rxn method', 'cached', 'min penalty time', 
+        cols = ['order','max rxn time', 'max rxn method', 'cached', 'min penalty time',
         'min penalty method', 'min penalty sensitvivity', 'kappa']
         perf_log = {c:{} for c in cols}
 
@@ -82,7 +82,7 @@ def singleSampleCompass(data, model, media, directory, sample_name, sample_index
     # Build model into Gurobi model
     credentials = utils.parse_gurobi_license_file(os.path.join(LICENSE_DIR, 'gurobi.lic'))
     gp_model = initialize_gurobi_model(model, credentials, args['num_threads'], args['lpmethod'], args['advance'])
-    
+
     logger.info(f'Processing Sample {sample_index}: {sample_name}')
     global_state.set_current_cell_name(sample_name)
 
@@ -151,14 +151,14 @@ def singleSampleCompass(data, model, media, directory, sample_name, sample_index
     logger.info("Compass Exchange Time: "+str(exchange_elapsed))
     logger.info("Processed "+str(len(uptake_scores))+" uptake reactions")
     logger.info("Processed "+str(len(secretion_scores))+" secretion reactions")
-    
+
     if perf_log is not None:
         perf_log = pd.DataFrame(perf_log)
         perf_log.to_csv(os.path.join(directory, "compass_performance_log.csv"))
         logger.info("Saved detailed performance log")
-    
+
     logger.info('COMPASS Completed Successfully')
-    
+
 def read_selected_reactions(select_reactions, select_subsystems, model):
     selected_reaction_ids = []
     if select_reactions:
@@ -357,7 +357,7 @@ def compass_exchange(model, gp_model, reaction_penalties, only_exchange=False, p
             obj += penalty * gp_model.getVarByName(rxn)
         gp_model.setObjective(obj, GRB.MINIMIZE)
         gp_model.update()
-        
+
         if perf_log is not None:
             start_time = time.process_time()
         #gp_model.optimize()
@@ -482,7 +482,7 @@ def compass_reactions(model, gp_model, reaction_penalties, perf_log=None, args =
     # Iterate through Reactions
 
     reaction_scores = {}
-    
+
     reactions = list(model.reactions.values())
 
     if args['test_mode']:
@@ -509,7 +509,7 @@ def compass_reactions(model, gp_model, reaction_penalties, perf_log=None, args =
             old_partner_ub = partner_var.ub
             old_partner_lb = partner_var.lb
             partner_var.setAttr('ub', max(old_partner_lb, 0))
-        
+
         r_max = maximize_reaction(model, gp_model, reaction.id, perf_log=perf_log, preprocess_cache_dir=preprocess_cache_dir)
 
         # If Reaction can't carry flux anyways (v_r^opt = 0), just continue
@@ -587,10 +587,13 @@ def initialize_gurobi_model(model, credentials, num_threads=1, lpmethod=-1, adv=
     # Gurobi WLS License
     if 'WLSACCESSID' in credentials and 'WLSSECRET' in credentials and 'LICENSEID' in credentials:
         env = gp.Env(params=credentials)
+    # Gurobi License Server
+    elif "TOKENSERVER" in credentials:
+        env = gp.Env(params=credentials)
     # Gurobi Named-User License
     else:
         env = gp.Env()
-    
+
     gp_model = gp.Model(env=env)
 
     # Set Parameters for the Gurobi model
@@ -625,9 +628,9 @@ def initialize_gurobi_model(model, credentials, num_threads=1, lpmethod=-1, adv=
     # Define minimum and maximum flux for each reaction
     for x in reactions:
         gp_model.addVar(
-            lb=x.lower_bound, 
-            ub=x.upper_bound, 
-            name=x.id, 
+            lb=x.lower_bound,
+            ub=x.upper_bound,
+            name=x.id,
             vtype=GRB.CONTINUOUS)
     gp_model.update()
 
@@ -664,7 +667,7 @@ def maximize_reaction(model, gp_model, rxn, use_cache=True, perf_log=None, prepr
     """Maximizes the current reaction in the problem
     Attempts to retrieve the value from cache if its in cache
     """
-    
+
     if perf_log is not None:
         start_time = time.process_time()
         perf_log['order'][rxn] = len(perf_log['order'])
@@ -723,7 +726,7 @@ def maximize_reaction_range(start_stop, args, model_name=None, metabolic_model_d
     #make a sub cache for each thread to write into
     sub_cache = {}
     model = models.init_model(model=model_name, species=args['species'],
-                       exchange_limit=EXCHANGE_LIMIT, media=args['media'], 
+                       exchange_limit=EXCHANGE_LIMIT, media=args['media'],
                        isoform_summing=args['isoform_summing'], metabolic_model_dir=metabolic_model_dir)
     credentials = utils.parse_gurobi_license_file(os.path.join(LICENSE_DIR, 'gurobi.lic'))
     gp_model = initialize_gurobi_model(model, credentials, args['num_threads'], args['lpmethod'])
@@ -743,7 +746,7 @@ def maximize_reaction_range(start_stop, args, model_name=None, metabolic_model_d
             old_partner_ub = partner_var.ub
             old_partner_lb= partner_var.lb
             partner_var.setAttr('ub', max(old_partner_lb, 0))
-        
+
 
         utils.reset_objective(gp_model)
         gp_model.setObjective(gp_model.getVarByName(reaction.id), GRB.MAXIMIZE)
@@ -779,7 +782,7 @@ def maximize_metab_range(start_stop, args, model_name=None, metabolic_model_dir=
 
     sub_cache = {}
     model = models.init_model(model=model_name, species=args['species'],
-                       exchange_limit=EXCHANGE_LIMIT, media=args['media'], 
+                       exchange_limit=EXCHANGE_LIMIT, media=args['media'],
                        isoform_summing=args['isoform_summing'], metabolic_model_dir=metabolic_model_dir)
     credentials = utils.parse_gurobi_license_file(os.path.join(LICENSE_DIR, 'gurobi.lic'))
     gp_model = initialize_gurobi_model(model, credentials, args['num_threads'], args['lpmethod'])
@@ -990,7 +993,7 @@ def maximize_metab_range(start_stop, args, model_name=None, metabolic_model_dir=
             gp_model.remove(secretion_var)
 
         gp_model.update()
-            
+
     return sub_cache
 
 

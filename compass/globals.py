@@ -13,7 +13,10 @@ GIT_DIR = os.path.abspath(
 
 RESOURCE_DIR = os.path.join(_this_directory, "Resources")
 MODEL_DIR = os.path.join(RESOURCE_DIR, 'Metabolic Models')
-LICENSE_DIR = _this_directory
+if os.getenv("GRB_LICENSE_FILE"):
+    LICENSE_DIR = os.path.dirname(os.getenv("GRB_LICENSE_FILE"))
+else:
+    LICENSE_DIR = _this_directory
 
 # Parameters for COMPASS
 BETA = 0.95  # Used to constrain model near optimal point
