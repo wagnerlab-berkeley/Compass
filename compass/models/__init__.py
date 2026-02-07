@@ -16,7 +16,7 @@ from .importCommon import clean_reactions, limit_maximum_flux
 # ----------------------------------------
 
 
-def load_metabolic_model(model_name, species='homo_sapiens', metabolic_model_dir=MODEL_DIR):
+def load_metabolic_model(model_name, species="homo_sapiens", metabolic_model_dir=MODEL_DIR):
     """
     Loads the metabolic model from `file_name`, returning a Model object
     """
@@ -24,18 +24,14 @@ def load_metabolic_model(model_name, species='homo_sapiens', metabolic_model_dir
     # metabolic_model_dir is 'Resources/Metabolic Models' by default
     # if meta-subsystems are used, then metabolic_model_dir is args['output_dir']/meta_subsystem_models
 
-    if model_name.endswith('_mat'):
+    if model_name.endswith("_mat"):
         model = importMATLAB.load(model_name, species, metabolic_model_dir=metabolic_model_dir)
     else:
         model_dir = os.path.join(metabolic_model_dir, model_name)
-        model_file = [x for x in os.listdir(model_dir) if
-                      x.lower().endswith('.xml') or
-                      x.lower().endswith('.xml.gz')]
+        model_file = [x for x in os.listdir(model_dir) if x.lower().endswith(".xml") or x.lower().endswith(".xml.gz")]
 
         if len(model_file) == 0:
-            raise Exception(
-                "Invalid model - could not find .xml or .xml.gz file in " +
-                model_dir)
+            raise Exception("Invalid model - could not find .xml or .xml.gz file in " + model_dir)
         else:
             model_file = model_file[0]
 
@@ -49,10 +45,7 @@ def load_metabolic_model(model_name, species='homo_sapiens', metabolic_model_dir
         elif level == 2:
             model = importSBML2.load(model_name, sbmlDocument)
         else:
-            raise Exception(
-                "Invalid level {} for model {}".format(
-                    level, model_file)
-            )
+            raise Exception("Invalid level {} for model {}".format(level, model_file))
 
         resolve_genes(model)
         convert_species(model, species)
@@ -63,7 +56,6 @@ def load_metabolic_model(model_name, species='homo_sapiens', metabolic_model_dir
 
 
 def init_model(model, species, exchange_limit, media=None, isoform_summing="legacy", metabolic_model_dir=MODEL_DIR):
-
     model = load_metabolic_model(model, species, metabolic_model_dir=metabolic_model_dir)
 
     # Limit exchange reactions
@@ -75,7 +67,7 @@ def init_model(model, species, exchange_limit, media=None, isoform_summing="lega
     if media is not None:
         model.load_media(media)
 
-    if isoform_summing == 'remove-summing':
+    if isoform_summing == "remove-summing":
         model.remove_isoform_summing()
 
     return model

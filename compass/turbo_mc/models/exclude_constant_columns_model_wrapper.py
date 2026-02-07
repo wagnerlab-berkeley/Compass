@@ -17,14 +17,12 @@ class ExcludeConstantColumnsModelWrapper(MatrixCompletionModel):
     2) Constant columns are guaranteed to be predicted as constant, which fixes the r2 for those columns.
         (Fitting models such as MF may lead to some noise in constant columns, and as such, -1.0 r2s)
     """
+
     def __init__(self, model: MatrixCompletionModel):
         self.n_epochs = model.n_epochs
         self.model = model
 
-    def _fit_matrix_init(
-            self,
-            X_observed: np.array,
-            Z: None = None) -> None:
+    def _fit_matrix_init(self, X_observed: np.array, Z: None = None) -> None:
         if utils.TIMEIT:  # For profiling
             print("\tExcludeConstantColumnsModelWrapper::_fit_matrix_init ...")  # For profiling
             time_start = time.time()  # For profiling
@@ -46,8 +44,7 @@ class ExcludeConstantColumnsModelWrapper(MatrixCompletionModel):
             X_observed_subset = X_observed[:, self.nonconstant_column_indices]
             if utils.TIMEIT:  # For profiling
                 time_tot = time.time() - time_start  # For profiling
-                print("\tExcludeConstantColumnsModelWrapper::_fit_matrix_init, time = %.2f"
-                      % time_tot)  # For profiling
+                print("\tExcludeConstantColumnsModelWrapper::_fit_matrix_init, time = %.2f" % time_tot)  # For profiling
             self.model._fit_matrix_init(X_observed_subset, Z=Z)
 
     def _step(self):

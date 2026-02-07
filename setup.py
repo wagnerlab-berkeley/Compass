@@ -12,26 +12,23 @@ setup(
     version=__version__,
     packages=find_packages(),
     include_package_data=True,
-
-    entry_points={'console_scripts':
-                  ['compass = compass.main:entry']},
-
+    entry_points={"console_scripts": ["compass = compass.main:entry"]},
     install_requires=[
-        'numpy>=1.12',
-        'pandas>=0.20',
-        'tqdm>=4.11',
-        'python-libsbml>=5.13',
-        'six>=1.10',
-        'scikit-learn>=0.19',
-        'scipy>=1.0',
-        'python-igraph>=0.9', #Need the version to be high enough fgo
-        'leidenalg>=0.8.2',
-        'anndata',
-        'gurobipy>=11.0.0'],
-
+        "numpy>=1.12",
+        "pandas>=0.20",
+        "tqdm>=4.11",
+        "python-libsbml>=5.13",
+        "six>=1.10",
+        "scikit-learn>=0.19",
+        "scipy>=1.0",
+        "python-igraph>=0.9",  # Need the version to be high enough fgo
+        "leidenalg>=0.8.2",
+        "anndata",
+        "gurobipy>=11.0.0",
+    ],
     author="Charles Chien",
     author_email="charleschien101@gmail.com",
     description="Metabolic Flux Balance Analysis",
     keywords="",
-    url=""
+    url="",
 )

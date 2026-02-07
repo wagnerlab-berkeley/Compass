@@ -9,18 +9,20 @@ from compass.globals import EXCHANGE_LIMIT, MODEL_DIR
 from compass.models import load_metabolic_model, init_model
 
 import logging
-logger = logging.getLogger('compass')
+
+logger = logging.getLogger("compass")
 
 # NOTE: this script generates models for user-defined meta-subsystems based on the RECON2 format
 # For each defined meta-subsystem, exchange reactions are added for all (non-currency) metabolites associated
 # with the current meta-subsystem. For each metabolite, associated reactions that are not part of the current subsystem
 # are also included
 
-PATH_2_RECON_2_MAT = os.path.join(MODEL_DIR, 'RECON2_mat')
-PATH_2_CORE_RXNS = os.path.join(MODEL_DIR, 'RECON2_mat', 'model', 'core_reactions.txt')
-PATH_2_CURRENCY_METS = os.path.join(MODEL_DIR, 'RECON2_mat', 'model', 'currency_mets.txt')
+PATH_2_RECON_2_MAT = os.path.join(MODEL_DIR, "RECON2_mat")
+PATH_2_CORE_RXNS = os.path.join(MODEL_DIR, "RECON2_mat", "model", "core_reactions.txt")
+PATH_2_CURRENCY_METS = os.path.join(MODEL_DIR, "RECON2_mat", "model", "currency_mets.txt")
 
-model_dir = os.path.join(PATH_2_RECON_2_MAT, 'model')
+model_dir = os.path.join(PATH_2_RECON_2_MAT, "model")
+
 
 def smat_cmp(a, b):
     if a[1] > b[1]:
@@ -32,24 +34,25 @@ def smat_cmp(a, b):
             return -1
     else:
         return -1
-    
+
+
 def custom_json_dump(data):
-    json_str = '[\n'
+    json_str = "[\n"
     for sublist in data:
-        json_str += '    ' + json.dumps(sublist) + ',\n'
-    json_str = json_str.rstrip(',\n') + '\n]'
+        json_str += "    " + json.dumps(sublist) + ",\n"
+    json_str = json_str.rstrip(",\n") + "\n]"
     return json_str
 
-def partition_model(args):
 
+def partition_model(args):
     # Parse user input
-    with open(args['select_meta_subsystems']) as f:
+    with open(args["select_meta_subsystems"]) as f:
         text = f.readlines()
     text = [line.strip() for line in text]
     entries = []
     for line in text:
-        line = line.split(':')
-        newline = [line[0]] + line[1].split(';')
+        line = line.split(":")
+        newline = [line[0]] + line[1].split(";")
         newline = [item.strip() for item in newline]
         entries.append(newline)
 
@@ -62,52 +65,52 @@ def partition_model(args):
         meta_subsystems[meta_subsystem_id] = entry[1:]
 
     # Create directories for meta subsystem models
-    meta_subsystem_models_dir = os.path.join(args['output_dir'], 'meta_subsystem_models')
+    meta_subsystem_models_dir = os.path.join(args["output_dir"], "meta_subsystem_models")
     if os.path.exists(meta_subsystem_models_dir) == False:
         os.mkdir(meta_subsystem_models_dir)
 
     for meta_subsystem in selected_meta_subsystems:
-        output_dir = os.path.join(meta_subsystem_models_dir, f'{meta_subsystem}_mat')
+        output_dir = os.path.join(meta_subsystem_models_dir, f"{meta_subsystem}_mat")
         if os.path.exists(output_dir) == False:
             os.mkdir(output_dir)
-        if os.path.exists(os.path.join(output_dir, 'model')) == False:
-            os.mkdir(os.path.join(output_dir, 'model'))
-        if os.path.exists(os.path.join(output_dir, 'media')) == False:
-            os.mkdir(os.path.join(output_dir, 'media'))
+        if os.path.exists(os.path.join(output_dir, "model")) == False:
+            os.mkdir(os.path.join(output_dir, "model"))
+        if os.path.exists(os.path.join(output_dir, "media")) == False:
+            os.mkdir(os.path.join(output_dir, "media"))
 
-    media = args['media']
+    media = args["media"]
 
     # Load reaction files
-    with open(os.path.join(model_dir, f'model.lb.json')) as fin:
+    with open(os.path.join(model_dir, f"model.lb.json")) as fin:
         recon2_lbs = json.load(fin)
-    with open(os.path.join(model_dir, f'model.rev.json')) as fin:
+    with open(os.path.join(model_dir, f"model.rev.json")) as fin:
         recon2_revs = json.load(fin)
-    with open(os.path.join(model_dir, f'model.rules.json')) as fin:
+    with open(os.path.join(model_dir, f"model.rules.json")) as fin:
         recon2_rules = json.load(fin)
-    with open(os.path.join(model_dir, f'model.rxnECNumbers.json')) as fin:
+    with open(os.path.join(model_dir, f"model.rxnECNumbers.json")) as fin:
         recon2_rxnECNumbers = json.load(fin)
-    with open(os.path.join(model_dir, f'model.rxnKeggID.json')) as fin:
+    with open(os.path.join(model_dir, f"model.rxnKeggID.json")) as fin:
         recon2_rxnKeggIDs = json.load(fin)
-    with open(os.path.join(model_dir, f'model.rxnNames.json')) as fin:
+    with open(os.path.join(model_dir, f"model.rxnNames.json")) as fin:
         recon2_rxnNames = json.load(fin)
-    with open(os.path.join(model_dir, f'model.rxns.json')) as fin:
+    with open(os.path.join(model_dir, f"model.rxns.json")) as fin:
         recon2_rxns = json.load(fin)
-    with open(os.path.join(model_dir, f'model.subSystems.json')) as fin:
+    with open(os.path.join(model_dir, f"model.subSystems.json")) as fin:
         recon2_subSystems = json.load(fin)
-    with open(os.path.join(model_dir, f'model.ub.json')) as fin:
+    with open(os.path.join(model_dir, f"model.ub.json")) as fin:
         recon2_ubs = json.load(fin)
 
     # Load metabolite files
-    with open(os.path.join(model_dir, f'model.metFormulas.json')) as fin:
+    with open(os.path.join(model_dir, f"model.metFormulas.json")) as fin:
         recon2_metFormulas = json.load(fin)
-    with open(os.path.join(model_dir, f'model.metKeggID.json')) as fin:
+    with open(os.path.join(model_dir, f"model.metKeggID.json")) as fin:
         recon2_metKeggIDs = json.load(fin)
-    with open(os.path.join(model_dir, f'model.metNames.json')) as fin:
+    with open(os.path.join(model_dir, f"model.metNames.json")) as fin:
         recon2_metNames = json.load(fin)
-    with open(os.path.join(model_dir, f'model.mets.json')) as fin:
+    with open(os.path.join(model_dir, f"model.mets.json")) as fin:
         recon2_mets = json.load(fin)
 
-    recon2_model = load_metabolic_model(args['model'], species=args['species'])
+    recon2_model = load_metabolic_model(args["model"], species=args["species"])
     # Read in RECON2 SMAT
     recon2_smat = recon2_model.getSMAT()
     recon2_smat_transposed = recon2_model.getSMAT_transposed()
@@ -141,17 +144,20 @@ def partition_model(args):
     meta_subsystem_rxnMetas = {}
     meta_subsystem_metMetas = {}
 
-    recon2_rxn_meta = pd.read_csv(os.path.join(PATH_2_RECON_2_MAT, 'model', 'rxnMeta.txt'), delimiter='\t', quoting=csv.QUOTE_NONE)
-    recon2_met_meta = pd.read_csv(os.path.join(PATH_2_RECON_2_MAT, 'model', 'metMeta.txt'), delimiter='\t', quoting=csv.QUOTE_NONE)
+    recon2_rxn_meta = pd.read_csv(
+        os.path.join(PATH_2_RECON_2_MAT, "model", "rxnMeta.txt"), delimiter="\t", quoting=csv.QUOTE_NONE
+    )
+    recon2_met_meta = pd.read_csv(
+        os.path.join(PATH_2_RECON_2_MAT, "model", "metMeta.txt"), delimiter="\t", quoting=csv.QUOTE_NONE
+    )
 
     # Generate model for each meta subsystem
     for i in range(len(selected_meta_subsystems)):
-
         # Select current meta subsystem
         cur_meta_subsystem = selected_meta_subsystems[i]
 
         # Specify output directory for current meta subsystem
-        output_dir = os.path.join(meta_subsystem_models_dir, f'{cur_meta_subsystem}_mat')
+        output_dir = os.path.join(meta_subsystem_models_dir, f"{cur_meta_subsystem}_mat")
         model_dirs.append(output_dir)
 
         # Compute rxns
@@ -190,7 +196,7 @@ def partition_model(args):
         for rxn in cur_meta_subsystem_rxns:
             smat_row = recon2_smat_transposed[rxn]
             for met, coef in smat_row:
-                assert met[-3:] == '[m]' or met[-3:] == '[c]' or met[-3:] == '[e]'
+                assert met[-3:] == "[m]" or met[-3:] == "[c]" or met[-3:] == "[e]"
                 cur_meta_subsystem_mets.append(met)
         cur_meta_subsystem_mets = list(set(cur_meta_subsystem_mets))
         cur_meta_subsystem_mets.sort()
@@ -234,77 +240,103 @@ def partition_model(args):
         meta_subsystem_metNames[cur_meta_subsystem] = cur_meta_subsystem_metNames
         meta_subsystem_mets[cur_meta_subsystem] = cur_meta_subsystem_mets
 
-        cur_meta_subsystem_rxnMeta = recon2_rxn_meta[recon2_rxn_meta['id'].isin(cur_meta_subsystem_rxns)].reset_index(drop=True).sort_values('id')
+        cur_meta_subsystem_rxnMeta = (
+            recon2_rxn_meta[recon2_rxn_meta["id"].isin(cur_meta_subsystem_rxns)]
+            .reset_index(drop=True)
+            .sort_values("id")
+        )
         meta_subsystem_rxnMetas[cur_meta_subsystem] = cur_meta_subsystem_rxnMeta
         assert len(meta_subsystem_rxnMetas[cur_meta_subsystem]) == len(meta_subsystem_rxns[cur_meta_subsystem])
 
-        cur_meta_subsystem_metMeta = recon2_met_meta[recon2_met_meta['id'].isin(cur_meta_subsystem_mets)].reset_index(drop=True).sort_values('id')
+        cur_meta_subsystem_metMeta = (
+            recon2_met_meta[recon2_met_meta["id"].isin(cur_meta_subsystem_mets)]
+            .reset_index(drop=True)
+            .sort_values("id")
+        )
         meta_subsystem_metMetas[cur_meta_subsystem] = cur_meta_subsystem_metMeta
         assert len(meta_subsystem_metMetas[cur_meta_subsystem]) == len(meta_subsystem_mets[cur_meta_subsystem])
 
         # Temporarily save .json files
         # Intermediary outputs are used to construct model to determine uptake/secretion metabolites
         # Files will be overwritten at the end
-        with open(os.path.join(output_dir, 'model', f'model.lb.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_lbs, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.lb.json"), "w") as file:
+            json.dump(cur_meta_subsystem_lbs, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.rev.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_revs, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rev.json"), "w") as file:
+            json.dump(cur_meta_subsystem_revs, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.rules.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_rules, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rules.json"), "w") as file:
+            json.dump(cur_meta_subsystem_rules, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.rxnECNumbers.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_rxnECNumbers, file, indent=4, separators=(',', ':'))
-            
-        with open(os.path.join(output_dir, 'model', f'model.rxnKeggID.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_rxnKeggIDs, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rxnECNumbers.json"), "w") as file:
+            json.dump(cur_meta_subsystem_rxnECNumbers, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.rxnNames.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_rxnNames, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rxnKeggID.json"), "w") as file:
+            json.dump(cur_meta_subsystem_rxnKeggIDs, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.rxns.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_rxns, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rxnNames.json"), "w") as file:
+            json.dump(cur_meta_subsystem_rxnNames, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.subSystems.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_subSystems, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rxns.json"), "w") as file:
+            json.dump(cur_meta_subsystem_rxns, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.ub.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_ubs, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.subSystems.json"), "w") as file:
+            json.dump(cur_meta_subsystem_subSystems, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.metFormulas.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_metFormulas, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.ub.json"), "w") as file:
+            json.dump(cur_meta_subsystem_ubs, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.metKeggID.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_metKeggIDs, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.metFormulas.json"), "w") as file:
+            json.dump(cur_meta_subsystem_metFormulas, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.metNames.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_metNames, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.metKeggID.json"), "w") as file:
+            json.dump(cur_meta_subsystem_metKeggIDs, file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.mets.json'), 'w') as file:
-            json.dump(cur_meta_subsystem_mets, file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.metNames.json"), "w") as file:
+            json.dump(cur_meta_subsystem_metNames, file, indent=4, separators=(",", ":"))
+
+        with open(os.path.join(output_dir, "model", f"model.mets.json"), "w") as file:
+            json.dump(cur_meta_subsystem_mets, file, indent=4, separators=(",", ":"))
 
         formatted_json_str = custom_json_dump(cur_meta_subsystem_smat)
-        with open(os.path.join(output_dir, 'model', f'model.S.json'), 'w') as file:
+        with open(os.path.join(output_dir, "model", f"model.S.json"), "w") as file:
             file.write(formatted_json_str)
-            
-        shutil.copy(os.path.join(model_dir, 'model.genes.json'), os.path.join(output_dir, 'model', 'model.genes.json'))
-        shutil.copy(os.path.join(PATH_2_RECON_2_MAT, 'media', f'{media}.json'), os.path.join(output_dir, 'media', f'{media}.json'))
 
-        gene_filenames = ['mouseSynonyms', 'non2uniqueEntrez', 'uniqueEntrez2Non', 'uniqueHumanEntrez', 'uniqueHumanGeneSymbol', 'uniqueMouseGeneSymbol_all', 'uniqueMouseGeneSymbol']
+        shutil.copy(os.path.join(model_dir, "model.genes.json"), os.path.join(output_dir, "model", "model.genes.json"))
+        shutil.copy(
+            os.path.join(PATH_2_RECON_2_MAT, "media", f"{media}.json"),
+            os.path.join(output_dir, "media", f"{media}.json"),
+        )
+
+        gene_filenames = [
+            "mouseSynonyms",
+            "non2uniqueEntrez",
+            "uniqueEntrez2Non",
+            "uniqueHumanEntrez",
+            "uniqueHumanGeneSymbol",
+            "uniqueMouseGeneSymbol_all",
+            "uniqueMouseGeneSymbol",
+        ]
         for filename in gene_filenames:
-            shutil.copy(os.path.join(PATH_2_RECON_2_MAT, f'{filename}.json'), os.path.join(output_dir, f'{filename}.json'))
+            shutil.copy(
+                os.path.join(PATH_2_RECON_2_MAT, f"{filename}.json"), os.path.join(output_dir, f"{filename}.json")
+            )
 
     # **********************************************************************
 
     # Add exchange reaction for all metabolites associated with subsystem
 
     for meta_subsystem in selected_meta_subsystems:
-        meta_subsystem_model = init_model(f'{meta_subsystem}_mat', species=args['species'], exchange_limit=EXCHANGE_LIMIT, media=args['media'],
-                                        metabolic_model_dir=meta_subsystem_models_dir)
-        
+        meta_subsystem_model = init_model(
+            f"{meta_subsystem}_mat",
+            species=args["species"],
+            exchange_limit=EXCHANGE_LIMIT,
+            media=args["media"],
+            metabolic_model_dir=meta_subsystem_models_dir,
+        )
+
         meta_subsystem_model_smat = meta_subsystem_model.getSMAT()
-        
+
         rxn_idx = len(meta_subsystem_rxns[meta_subsystem]) + 1
 
         new_rxn_meta_dict = {}
@@ -312,7 +344,6 @@ def partition_model(args):
             new_rxn_meta_dict[colname] = []
 
         for met in meta_subsystem_mets[meta_subsystem]:
-
             # First check if there is already an exchange reaction associated with the current metabolite
             has_exchange = False
             smat_row = meta_subsystem_model_smat[met]
@@ -322,7 +353,7 @@ def partition_model(args):
                 rxn = meta_subsystem_model.reactions[rxn_id]
                 if rxn.is_exchange:
                     has_exchange = True
-                    print(f'{met} has exchange reaction {rxn_id}')
+                    print(f"{met} has exchange reaction {rxn_id}")
                     break
 
             if has_exchange == True:
@@ -334,8 +365,8 @@ def partition_model(args):
             exchange_rev = 0
             exchange_rxnECNumber = ""
             exchange_rxnKeggID = ""
-            exchange_rxnName = f'{met}_EXCHANGE_{meta_subsystem}'
-            exchange_rxn = f'{met}_EXCHANGE_{meta_subsystem}'
+            exchange_rxnName = f"{met}_EXCHANGE_{meta_subsystem}"
+            exchange_rxn = f"{met}_EXCHANGE_{meta_subsystem}"
             exchange_subSystem = meta_subsystem
             exchange_rule = ""
 
@@ -358,24 +389,26 @@ def partition_model(args):
             meta_subsystem_smat[meta_subsystem].append(exchange_smat)
 
             for colname in new_rxn_meta_dict.keys():
-                if colname == 'id' or colname == 'name':
-                    new_rxn_meta_dict[colname].append(f'{met}_EXCHANGE_{meta_subsystem}')
-                elif colname == 'subsystem':
+                if colname == "id" or colname == "name":
+                    new_rxn_meta_dict[colname].append(f"{met}_EXCHANGE_{meta_subsystem}")
+                elif colname == "subsystem":
                     new_rxn_meta_dict[colname].append(meta_subsystem)
                 else:
-                    new_rxn_meta_dict[colname].append('')
+                    new_rxn_meta_dict[colname].append("")
 
-        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat((meta_subsystem_rxnMetas[meta_subsystem], pd.DataFrame.from_dict(new_rxn_meta_dict)))
+        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat(
+            (meta_subsystem_rxnMetas[meta_subsystem], pd.DataFrame.from_dict(new_rxn_meta_dict))
+        )
         assert len(meta_subsystem_rxnMetas[meta_subsystem]) == len(meta_subsystem_rxns[meta_subsystem])
 
         # Specify output directory for current meta subsystem
-        output_dir = os.path.join(meta_subsystem_models_dir, f'{meta_subsystem}_mat')
+        output_dir = os.path.join(meta_subsystem_models_dir, f"{meta_subsystem}_mat")
 
         # Save list of reactions to run COMPASS on
         # One-hop neighbor reactions and additional exchange reactions do not need to be computed
-        with open(os.path.join(output_dir, f'{meta_subsystem}_mat_rxns.txt'), 'w') as f:
+        with open(os.path.join(output_dir, f"{meta_subsystem}_mat_rxns.txt"), "w") as f:
             for rxn_id in meta_subsystem_rxns[meta_subsystem]:
-                f.write(f'{rxn_id}\n')
+                f.write(f"{rxn_id}\n")
 
     # **********************************************************************
 
@@ -387,15 +420,13 @@ def partition_model(args):
     currency_mets = [m.strip() for m in currency_mets]
 
     for meta_subsystem in selected_meta_subsystems:
-
-        output_dir = os.path.join(meta_subsystem_models_dir, f'{meta_subsystem}_mat')
+        output_dir = os.path.join(meta_subsystem_models_dir, f"{meta_subsystem}_mat")
 
         # Reactions and metabolites that are added to the meta-subsystem after adding all associated reactions
         new_rxns = set()
         new_mets = set()
 
         for met in meta_subsystem_mets[meta_subsystem]:
-
             if met in currency_mets:
                 continue
 
@@ -408,10 +439,10 @@ def partition_model(args):
                     continue
 
                 new_rxns.add(rxn)
-            
+
                 associated_smat_transpose_row = recon2_smat_transposed[rxn]
                 for met, coef in associated_smat_transpose_row:
-                    assert met[-3:] == '[m]' or met[-3:] == '[c]' or met[-3:] == '[e]'
+                    assert met[-3:] == "[m]" or met[-3:] == "[c]" or met[-3:] == "[e]"
                     if met in meta_subsystem_mets[meta_subsystem]:
                         continue
                     new_mets.add(met)
@@ -456,7 +487,12 @@ def partition_model(args):
             smat_cmp_key = cmp_to_key(smat_cmp)
             meta_subsystem_smat[meta_subsystem].sort(key=smat_cmp_key)
 
-        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat((meta_subsystem_rxnMetas[meta_subsystem], recon2_rxn_meta[recon2_rxn_meta['id'].isin(new_rxns)].sort_values('id')))
+        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat(
+            (
+                meta_subsystem_rxnMetas[meta_subsystem],
+                recon2_rxn_meta[recon2_rxn_meta["id"].isin(new_rxns)].sort_values("id"),
+            )
+        )
         assert len(meta_subsystem_rxnMetas[meta_subsystem]) == len(meta_subsystem_rxns[meta_subsystem])
 
         new_rxn_meta_dict = {}
@@ -469,14 +505,13 @@ def partition_model(args):
         rxn_idx = len(meta_subsystem_rxns[meta_subsystem]) + 1
 
         for new_met in new_mets:
-
             exchange_lb = -1000
             exchange_ub = 1000
             exchange_rev = 0
             exchange_rxnECNumber = ""
             exchange_rxnKeggID = ""
-            exchange_rxnName = f'{new_met}_EXCHANGE_{meta_subsystem}'
-            exchange_rxn = f'{new_met}_EXCHANGE_{meta_subsystem}'
+            exchange_rxnName = f"{new_met}_EXCHANGE_{meta_subsystem}"
+            exchange_rxn = f"{new_met}_EXCHANGE_{meta_subsystem}"
             exchange_subSystem = meta_subsystem
             exchange_rule = ""
 
@@ -497,142 +532,162 @@ def partition_model(args):
             meta_subsystem_smat[meta_subsystem].append(exchange_smat)
 
             for colname in new_rxn_meta_dict.keys():
-                if colname == 'id' or colname == 'name':
-                    new_rxn_meta_dict[colname].append(f'{new_met}_EXCHANGE_{meta_subsystem}')
-                elif colname == 'subsystem':
+                if colname == "id" or colname == "name":
+                    new_rxn_meta_dict[colname].append(f"{new_met}_EXCHANGE_{meta_subsystem}")
+                elif colname == "subsystem":
                     new_rxn_meta_dict[colname].append(meta_subsystem)
                 else:
-                    new_rxn_meta_dict[colname].append('')
+                    new_rxn_meta_dict[colname].append("")
 
-
-        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat((meta_subsystem_rxnMetas[meta_subsystem], pd.DataFrame.from_dict(new_rxn_meta_dict)))
+        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat(
+            (meta_subsystem_rxnMetas[meta_subsystem], pd.DataFrame.from_dict(new_rxn_meta_dict))
+        )
         assert len(meta_subsystem_rxnMetas[meta_subsystem]) == len(meta_subsystem_rxns[meta_subsystem])
 
-        metMeta = pd.read_csv(os.path.join(model_dir, 'metMeta.txt'), delimiter='\t', quoting=csv.QUOTE_NONE)
-        meta_subsystem_metMetas[meta_subsystem] = metMeta[metMeta['id'].isin(meta_subsystem_mets[meta_subsystem])].reset_index(drop=True)
-        meta_subsystem_metMetas[meta_subsystem].sort_values(by='id', key=lambda column: column.map(lambda e: meta_subsystem_mets[meta_subsystem].index(e)), inplace=True)
+        metMeta = pd.read_csv(os.path.join(model_dir, "metMeta.txt"), delimiter="\t", quoting=csv.QUOTE_NONE)
+        meta_subsystem_metMetas[meta_subsystem] = metMeta[
+            metMeta["id"].isin(meta_subsystem_mets[meta_subsystem])
+        ].reset_index(drop=True)
+        meta_subsystem_metMetas[meta_subsystem].sort_values(
+            by="id", key=lambda column: column.map(lambda e: meta_subsystem_mets[meta_subsystem].index(e)), inplace=True
+        )
         assert len(meta_subsystem_metMetas[meta_subsystem]) == len(meta_subsystem_mets[meta_subsystem])
 
         # Save final .json files
-        with open(os.path.join(output_dir, 'model', f'model.lb.json'), 'w') as file:
-            json.dump(meta_subsystem_lbs[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.lb.json"), "w") as file:
+            json.dump(meta_subsystem_lbs[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.rev.json'), 'w') as file:
-            json.dump(meta_subsystem_revs[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rev.json"), "w") as file:
+            json.dump(meta_subsystem_revs[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.rules.json'), 'w') as file:
-            json.dump(meta_subsystem_rules[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rules.json"), "w") as file:
+            json.dump(meta_subsystem_rules[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.rxnECNumbers.json'), 'w') as file:
-            json.dump(meta_subsystem_rxnECNumbers[meta_subsystem], file, indent=4, separators=(',', ':'))
-            
-        with open(os.path.join(output_dir, 'model', f'model.rxnKeggID.json'), 'w') as file:
-            json.dump(meta_subsystem_rxnKeggIDs[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rxnECNumbers.json"), "w") as file:
+            json.dump(meta_subsystem_rxnECNumbers[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.rxnNames.json'), 'w') as file:
-            json.dump(meta_subsystem_rxnNames[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rxnKeggID.json"), "w") as file:
+            json.dump(meta_subsystem_rxnKeggIDs[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.rxns.json'), 'w') as file:
-            json.dump(meta_subsystem_rxns[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rxnNames.json"), "w") as file:
+            json.dump(meta_subsystem_rxnNames[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.subSystems.json'), 'w') as file:
-            json.dump(meta_subsystem_subSystems[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.rxns.json"), "w") as file:
+            json.dump(meta_subsystem_rxns[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.ub.json'), 'w') as file:
-            json.dump(meta_subsystem_ubs[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.subSystems.json"), "w") as file:
+            json.dump(meta_subsystem_subSystems[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.metFormulas.json'), 'w') as file:
-            json.dump(meta_subsystem_metFormulas[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.ub.json"), "w") as file:
+            json.dump(meta_subsystem_ubs[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.metKeggID.json'), 'w') as file:
-            json.dump(meta_subsystem_metKeggIDs[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.metFormulas.json"), "w") as file:
+            json.dump(meta_subsystem_metFormulas[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.metNames.json'), 'w') as file:
-            json.dump(meta_subsystem_metNames[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.metKeggID.json"), "w") as file:
+            json.dump(meta_subsystem_metKeggIDs[meta_subsystem], file, indent=4, separators=(",", ":"))
 
-        with open(os.path.join(output_dir, 'model', f'model.mets.json'), 'w') as file:
-            json.dump(meta_subsystem_mets[meta_subsystem], file, indent=4, separators=(',', ':'))
+        with open(os.path.join(output_dir, "model", f"model.metNames.json"), "w") as file:
+            json.dump(meta_subsystem_metNames[meta_subsystem], file, indent=4, separators=(",", ":"))
+
+        with open(os.path.join(output_dir, "model", f"model.mets.json"), "w") as file:
+            json.dump(meta_subsystem_mets[meta_subsystem], file, indent=4, separators=(",", ":"))
 
         formatted_json_str = custom_json_dump(meta_subsystem_smat[meta_subsystem])
-        with open(os.path.join(output_dir, 'model', f'model.S.json'), 'w') as file:
+        with open(os.path.join(output_dir, "model", f"model.S.json"), "w") as file:
             file.write(formatted_json_str)
 
-        meta_subsystem_rxnMetas[meta_subsystem].to_csv(os.path.join(output_dir, 'model', 'rxnMeta.txt'), sep='\t', index=False)
-        meta_subsystem_metMetas[meta_subsystem].to_csv(os.path.join(output_dir, 'model', 'metMeta.txt'), sep='\t', index=False)
+        meta_subsystem_rxnMetas[meta_subsystem].to_csv(
+            os.path.join(output_dir, "model", "rxnMeta.txt"), sep="\t", index=False
+        )
+        meta_subsystem_metMetas[meta_subsystem].to_csv(
+            os.path.join(output_dir, "model", "metMeta.txt"), sep="\t", index=False
+        )
 
-        shutil.copy(os.path.join(model_dir, 'model.genes.json'), os.path.join(output_dir, 'model', 'model.genes.json'))
-        shutil.copy(os.path.join(PATH_2_RECON_2_MAT, 'media', f'{media}.json'), os.path.join(output_dir, 'media', f'{media}.json'))
+        shutil.copy(os.path.join(model_dir, "model.genes.json"), os.path.join(output_dir, "model", "model.genes.json"))
+        shutil.copy(
+            os.path.join(PATH_2_RECON_2_MAT, "media", f"{media}.json"),
+            os.path.join(output_dir, "media", f"{media}.json"),
+        )
 
-        gene_filenames = ['mouseSynonyms', 'non2uniqueEntrez', 'uniqueEntrez2Non', 'uniqueHumanEntrez', 'uniqueHumanGeneSymbol', 'uniqueMouseGeneSymbol_all', 'uniqueMouseGeneSymbol']
+        gene_filenames = [
+            "mouseSynonyms",
+            "non2uniqueEntrez",
+            "uniqueEntrez2Non",
+            "uniqueHumanEntrez",
+            "uniqueHumanGeneSymbol",
+            "uniqueMouseGeneSymbol_all",
+            "uniqueMouseGeneSymbol",
+        ]
         for filename in gene_filenames:
-            shutil.copy(os.path.join(PATH_2_RECON_2_MAT, f'{filename}.json'), os.path.join(output_dir, f'{filename}.json'))
+            shutil.copy(
+                os.path.join(PATH_2_RECON_2_MAT, f"{filename}.json"), os.path.join(output_dir, f"{filename}.json")
+            )
 
     # **********************************************************************
 
-    if args['glucose'] is not None:
-
-        fname = media + '_glucose_' + str(args['glucose'])
-        args['media'] = fname
+    if args["glucose"] is not None:
+        fname = media + "_glucose_" + str(args["glucose"])
+        args["media"] = fname
 
         for meta_subsystem in selected_meta_subsystems:
-            logger.info(f'Modifying glucose exchange reaction bounds for {meta_subsystem}')
+            logger.info(f"Modifying glucose exchange reaction bounds for {meta_subsystem}")
 
-            output_dir = os.path.join(meta_subsystem_models_dir, f'{meta_subsystem}_mat')
-            media_file = media + '.json'
-            media_file = os.path.join(output_dir, 'media', media_file)
+            output_dir = os.path.join(meta_subsystem_models_dir, f"{meta_subsystem}_mat")
+            media_file = media + ".json"
+            media_file = os.path.join(output_dir, "media", media_file)
             with open(media_file) as fin:
                 media_file_json = json.load(fin)
 
-            if f'glc_D[e]_EXCHANGE_{meta_subsystem}' in meta_subsystem_rxns[meta_subsystem]:
-                logger.info(f'Added glc_D[e] for {meta_subsystem}')
-                glucose_e_rxn = f'glc_D[e]_EXCHANGE_{meta_subsystem}_neg'
-                media_file_json.update({glucose_e_rxn: float(args['glucose'])})
-            if f'glc_D[c]_EXCHANGE_{meta_subsystem}' in meta_subsystem_rxns[meta_subsystem]:
-                logger.info(f'Added glc_D[c] for {meta_subsystem}')
-                glucose_c_rxn = f'glc_D[c]_EXCHANGE_{meta_subsystem}_neg'
-                media_file_json.update({glucose_c_rxn: float(args['glucose'])})
+            if f"glc_D[e]_EXCHANGE_{meta_subsystem}" in meta_subsystem_rxns[meta_subsystem]:
+                logger.info(f"Added glc_D[e] for {meta_subsystem}")
+                glucose_e_rxn = f"glc_D[e]_EXCHANGE_{meta_subsystem}_neg"
+                media_file_json.update({glucose_e_rxn: float(args["glucose"])})
+            if f"glc_D[c]_EXCHANGE_{meta_subsystem}" in meta_subsystem_rxns[meta_subsystem]:
+                logger.info(f"Added glc_D[c] for {meta_subsystem}")
+                glucose_c_rxn = f"glc_D[c]_EXCHANGE_{meta_subsystem}_neg"
+                media_file_json.update({glucose_c_rxn: float(args["glucose"])})
 
-            glucose_media_file = os.path.join(output_dir, 'media', fname + '.json')
+            glucose_media_file = os.path.join(output_dir, "media", fname + ".json")
             if not os.path.exists(glucose_media_file):
-                fout = open(glucose_media_file, 'w')
+                fout = open(glucose_media_file, "w")
                 json.dump(media_file_json, fout)
                 fout.close()
 
-    if args['close_oxygen']:
-
-        fname = media + '_close_oxygen'
-        args['media'] = fname
+    if args["close_oxygen"]:
+        fname = media + "_close_oxygen"
+        args["media"] = fname
 
         for meta_subsystem in selected_meta_subsystems:
-            logger.info(f'Closing oxygen exchange reaction for {meta_subsystem}')
+            logger.info(f"Closing oxygen exchange reaction for {meta_subsystem}")
 
-            output_dir = os.path.join(meta_subsystem_models_dir, f'{meta_subsystem}_mat')
-            media_file = media + '.json'
-            media_file = os.path.join(output_dir, 'media', media_file)
+            output_dir = os.path.join(meta_subsystem_models_dir, f"{meta_subsystem}_mat")
+            media_file = media + ".json"
+            media_file = os.path.join(output_dir, "media", media_file)
             with open(media_file) as fin:
                 media_file_json = json.load(fin)
 
-            if f'o2[c]_EXCHANGE_{meta_subsystem}' in meta_subsystem_rxns[meta_subsystem]:
-                logger.info(f'Added o2[c] for {meta_subsystem}')
-                o2_c_rxn = f'o2[c]_EXCHANGE_{meta_subsystem}_neg'
+            if f"o2[c]_EXCHANGE_{meta_subsystem}" in meta_subsystem_rxns[meta_subsystem]:
+                logger.info(f"Added o2[c] for {meta_subsystem}")
+                o2_c_rxn = f"o2[c]_EXCHANGE_{meta_subsystem}_neg"
                 media_file_json.update({o2_c_rxn: 0.0})
-            if f'o2[e]_EXCHANGE_{meta_subsystem}' in meta_subsystem_rxns[meta_subsystem]:
-                logger.info(f'Added o2[e] for {meta_subsystem}')
-                o2_e_rxn = f'o2[e]_EXCHANGE_{meta_subsystem}_neg'
+            if f"o2[e]_EXCHANGE_{meta_subsystem}" in meta_subsystem_rxns[meta_subsystem]:
+                logger.info(f"Added o2[e] for {meta_subsystem}")
+                o2_e_rxn = f"o2[e]_EXCHANGE_{meta_subsystem}_neg"
                 media_file_json.update({o2_e_rxn: 0.0})
-            if f'o2[m]_EXCHANGE_{meta_subsystem}' in meta_subsystem_rxns[meta_subsystem]:
-                logger.info(f'Added o2[m] for {meta_subsystem}')
-                o2_m_rxn = f'o2[m]_EXCHANGE_{meta_subsystem}_neg'
+            if f"o2[m]_EXCHANGE_{meta_subsystem}" in meta_subsystem_rxns[meta_subsystem]:
+                logger.info(f"Added o2[m] for {meta_subsystem}")
+                o2_m_rxn = f"o2[m]_EXCHANGE_{meta_subsystem}_neg"
                 media_file_json.update({o2_m_rxn: 0.0})
 
-            oxygen_media_file = os.path.join(output_dir, 'media', fname + '.json')
+            oxygen_media_file = os.path.join(output_dir, "media", fname + ".json")
             if not os.path.exists(oxygen_media_file):
-                fout = open(oxygen_media_file, 'w')
+                fout = open(oxygen_media_file, "w")
                 json.dump(media_file_json, fout)
                 fout.close()
 
     # **********************************************************************
 
-    model_names = [f'{meta_subsystem}_mat' for meta_subsystem in selected_meta_subsystems]
+    model_names = [f"{meta_subsystem}_mat" for meta_subsystem in selected_meta_subsystems]
 
     return meta_subsystem_models_dir, model_names

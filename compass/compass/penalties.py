@@ -18,8 +18,7 @@ import os
 import math
 
 
-def eval_reaction_penalties(expression_file, model, media,
-                            species, args, metabolic_model_dir=MODEL_DIR, temp_dir=None):
+def eval_reaction_penalties(expression_file, model, media, species, args, metabolic_model_dir=MODEL_DIR, temp_dir=None):
     """
     Main entry-point for evaluating reaction penalties
 
@@ -54,19 +53,19 @@ def eval_reaction_penalties(expression_file, model, media,
     """
 
     # Unpack extra arguments
-    lambda_ = args['lambda']
-    num_neighbors = args['num_neighbors']
-    symmetric_kernel = args['symmetric_kernel']
-    input_weights_file = args['input_weights']
-    penalty_diffusion_mode = args['penalty_diffusion']
-    and_function = args['and_function']
-    input_knn = args['input_knn']
-    output_knn = args['output_knn']
-    latent_input = args['latent_space']
-    isoform_summing = args['isoform_summing']
+    lambda_ = args["lambda"]
+    num_neighbors = args["num_neighbors"]
+    symmetric_kernel = args["symmetric_kernel"]
+    input_weights_file = args["input_weights"]
+    penalty_diffusion_mode = args["penalty_diffusion"]
+    and_function = args["and_function"]
+    input_knn = args["input_knn"]
+    output_knn = args["output_knn"]
+    latent_input = args["latent_space"]
+    isoform_summing = args["isoform_summing"]
 
-    expression = utils.read_data(expression_file) #pd.read_csv(expression_file, sep='\t', index_col=0)
-    expression.index = expression.index.astype('str').str.upper()  # Gene names to upper
+    expression = utils.read_data(expression_file)  # pd.read_csv(expression_file, sep='\t', index_col=0)
+    expression.index = expression.index.astype("str").str.upper()  # Gene names to upper
 
     # If genes exist with duplicate symbols
     # Need to aggregate them out
@@ -75,56 +74,71 @@ def eval_reaction_penalties(expression_file, model, media,
         expression = expression.reset_index()
         expression = expression.groupby("GeneSymbol").sum()
 
-    model = models.init_model(model, species=species,
-                              exchange_limit=EXCHANGE_LIMIT,
-                              media=media, isoform_summing=isoform_summing,
-                              metabolic_model_dir=metabolic_model_dir)
+    model = models.init_model(
+        model,
+        species=species,
+        exchange_limit=EXCHANGE_LIMIT,
+        media=media,
+        isoform_summing=isoform_summing,
+        metabolic_model_dir=metabolic_model_dir,
+    )
 
     # Evaluate reaction penalties
     input_weights = None
     if input_weights_file:
-        if input_weights_file[-3:] == 'mtx':
+        if input_weights_file[-3:] == "mtx":
             input_weights = mmread(input_weights_file).todense()
-            input_weights = input_weights / input_weights.sum(axis=1,keepdims=1) #normalize the weights so each row sums to 1.
+            input_weights = input_weights / input_weights.sum(
+                axis=1, keepdims=1
+            )  # normalize the weights so each row sums to 1.
             input_weights = pd.DataFrame(input_weights, index=input_weights.index, columns=input_weights.index)
         else:
-            input_weights = pd.read_csv(input_weights_file, sep='\t', index_col=0)
+            input_weights = pd.read_csv(input_weights_file, sep="\t", index_col=0)
             # ensure same cell labels
-            if len(input_weights.index & expression.columns) != \
-                    input_weights.shape[0]:
-                raise Exception("Input weights file rows must have same sample "
-                                "labels as expression columns")
-            if len(input_weights.columns & expression.columns) != \
-                    input_weights.shape[1]:
-                raise Exception("Input weights file columns must have same sample "
-                                "labels as expression columns")
+            if len(input_weights.index & expression.columns) != input_weights.shape[0]:
+                raise Exception("Input weights file rows must have same sample labels as expression columns")
+            if len(input_weights.columns & expression.columns) != input_weights.shape[1]:
+                raise Exception("Input weights file columns must have same sample labels as expression columns")
 
-        input_weights = input_weights.loc[expression.columns, :] \
-            .loc[:, expression.columns]
+        input_weights = input_weights.loc[expression.columns, :].loc[:, expression.columns]
 
     reaction_penalties = eval_reaction_penalties_shared(
-        args, model, expression, lambda_,
-        num_neighbors=num_neighbors, symmetric_kernel=symmetric_kernel,
+        args,
+        model,
+        expression,
+        lambda_,
+        num_neighbors=num_neighbors,
+        symmetric_kernel=symmetric_kernel,
         and_function=and_function,
         penalty_diffusion_mode=penalty_diffusion_mode,
-        input_weights=input_weights, 
-        input_knn=input_knn, output_knn=output_knn, latent_input=latent_input,
-        temp_dir=temp_dir)
-    
-    logger = logging.getLogger('compass')
+        input_weights=input_weights,
+        input_knn=input_knn,
+        output_knn=output_knn,
+        latent_input=latent_input,
+        temp_dir=temp_dir,
+    )
+
+    logger = logging.getLogger("compass")
     logger.info("Reaction Penalty Computation Completed Successfully")
 
     return reaction_penalties
 
 
-def eval_reaction_penalties_shared(args, model, expression,
-                                   lambda_, num_neighbors,
-                                   symmetric_kernel, and_function,
-                                   penalty_diffusion_mode,
-                                   input_weights=None, 
-                                   input_knn=None, output_knn=None,
-                                   latent_input=None,
-                                   temp_dir=None):
+def eval_reaction_penalties_shared(
+    args,
+    model,
+    expression,
+    lambda_,
+    num_neighbors,
+    symmetric_kernel,
+    and_function,
+    penalty_diffusion_mode,
+    input_weights=None,
+    input_knn=None,
+    output_knn=None,
+    latent_input=None,
+    temp_dir=None,
+):
     """
     Determines reaction penalties, on the given model, for
     the given expression data
@@ -167,13 +181,14 @@ def eval_reaction_penalties_shared(args, model, expression,
     assert lambda_ >= 0 and lambda_ <= 1
 
     if temp_dir is None:
-        temp_dir = args['temp_dir']
+        temp_dir = args["temp_dir"]
 
     # Compute reaction expression for each sample
     sample_names = list(expression.columns)
 
-    reaction_expression = computeReactionExpressionParallel(args, model, expression, and_function,
-                                                            sample_names, temp_dir=temp_dir)
+    reaction_expression = computeReactionExpressionParallel(
+        args, model, expression, and_function, sample_names, temp_dir=temp_dir
+    )
 
     reaction_expression = pd.concat(reaction_expression, axis=1)
 
@@ -184,43 +199,40 @@ def eval_reaction_penalties_shared(args, model, expression,
         weights = sparse.csr_matrix((reaction_expression.shape[1], reaction_expression.shape[1]))
     else:
         if latent_input is not None:
-            data = pd.read_csv(latent_input, sep='\t', index_col=0).T
+            data = pd.read_csv(latent_input, sep="\t", index_col=0).T
         # log scale and PCA expresion
         else:
-            data = np.log2(expression+1)
-            model = PCA(n_components=min(data.shape[0], data.shape[1], 20),
-                    random_state = PCA_SEED)
-            if pd.__version__ >= '0.24':
-               data = model.fit_transform(data.to_numpy().T).T
+            data = np.log2(expression + 1)
+            model = PCA(n_components=min(data.shape[0], data.shape[1], 20), random_state=PCA_SEED)
+            if pd.__version__ >= "0.24":
+                data = model.fit_transform(data.to_numpy().T).T
             else:
                 data = model.fit_transform(data.values.T).T
             data = pd.DataFrame(data, columns=expression.columns)
 
-        if penalty_diffusion_mode == 'gaussian':
-            weights = sample_weights_tsne_symmetric(
-                data, num_neighbors, symmetric_kernel)
-        elif penalty_diffusion_mode == 'knn':
+        if penalty_diffusion_mode == "gaussian":
+            weights = sample_weights_tsne_symmetric(data, num_neighbors, symmetric_kernel)
+        elif penalty_diffusion_mode == "knn":
             weights = sample_weights_knn(data, num_neighbors, input_knn, output_knn)
         else:
-            raise ValueError(
-                'Invalid value for penalty_diffusion_mode: {}'
-                .format(penalty_diffusion_mode)
-            )
+            raise ValueError("Invalid value for penalty_diffusion_mode: {}".format(penalty_diffusion_mode))
 
     # Compute weights between samples
-    #This fixes potential error messages caused by labels being strings vs byte strings
+    # This fixes potential error messages caused by labels being strings vs byte strings
     if isinstance(weights, pd.DataFrame):
-        if pd.__version__ >= '0.24':
+        if pd.__version__ >= "0.24":
             weights = weights.to_numpy()
         else:
             weights = weights.values
-    
-    #Only works for dense matrices: neighborhood_reaction_expression = reaction_expression.dot(weights.T). 
-    #Pandas unsuccesfully tries to cast the sparse weights with np.asarry()
-    neighborhood_reaction_expression = weights.dot(reaction_expression.T).T 
-    neighborhood_reaction_expression = pd.DataFrame(neighborhood_reaction_expression, index=reaction_expression.index, columns=reaction_expression.columns)
 
-    result = (1-lambda_)/(1+reaction_expression) + lambda_/(1+neighborhood_reaction_expression)
+    # Only works for dense matrices: neighborhood_reaction_expression = reaction_expression.dot(weights.T).
+    # Pandas unsuccesfully tries to cast the sparse weights with np.asarry()
+    neighborhood_reaction_expression = weights.dot(reaction_expression.T).T
+    neighborhood_reaction_expression = pd.DataFrame(
+        neighborhood_reaction_expression, index=reaction_expression.index, columns=reaction_expression.columns
+    )
+
+    result = (1 - lambda_) / (1 + reaction_expression) + lambda_ / (1 + neighborhood_reaction_expression)
 
     result.index.name = "Reaction"
 
@@ -228,54 +240,53 @@ def eval_reaction_penalties_shared(args, model, expression,
 
 
 def computeReactionExpressionParallel(args, model, expression, and_function, sample_names, temp_dir=None):
-
     # Divide sample names into chunks for each processor to compute
 
-    logger = logging.getLogger('compass')
+    logger = logging.getLogger("compass")
 
     # If we're here, then run compass on this machine with N processes
-    if args['num_processes'] is None:
-        args['num_processes'] = multiprocessing.cpu_count()
+    if args["num_processes"] is None:
+        args["num_processes"] = multiprocessing.cpu_count()
 
-    if args['num_processes'] > multiprocessing.cpu_count():
-        args['num_processes'] = multiprocessing.cpu_count()
+    if args["num_processes"] > multiprocessing.cpu_count():
+        args["num_processes"] = multiprocessing.cpu_count()
 
     n_samples = len(sample_names)
 
     old_num_processes = None
     # Corner case of more samples than processors used
-    if n_samples < args['num_processes']:
-        old_num_processes = args['num_processes']
-        args['num_processes'] = 1
+    if n_samples < args["num_processes"]:
+        old_num_processes = args["num_processes"]
+        args["num_processes"] = 1
 
-    samples_per_process = math.floor(n_samples / args['num_processes'])
+    samples_per_process = math.floor(n_samples / args["num_processes"])
 
     sample_names_chunks = []
 
-    for i in range(args['num_processes']):
+    for i in range(args["num_processes"]):
         sample_names_chunks.append(sample_names[i * samples_per_process : (i + 1) * samples_per_process])
-    
-    if n_samples % args['num_processes'] != 0:
-        sample_names_chunks[args['num_processes'] - 1] += sample_names[args['num_processes'] * samples_per_process : ]
 
-    partial_map_fun = partial(_reaction_expression_parallel_map_fun, args=args,
-                              model=model, and_function=and_function,
-                              sample_names_chunks=sample_names_chunks, temp_dir=temp_dir)
+    if n_samples % args["num_processes"] != 0:
+        sample_names_chunks[args["num_processes"] - 1] += sample_names[args["num_processes"] * samples_per_process :]
+
+    partial_map_fun = partial(
+        _reaction_expression_parallel_map_fun,
+        args=args,
+        model=model,
+        and_function=and_function,
+        sample_names_chunks=sample_names_chunks,
+        temp_dir=temp_dir,
+    )
 
     pool = utils.create_process_pool(args)
 
-    logger.info(
-        "Computing penalties using {} processes"
-        .format(args['num_processes'])
-    )
+    logger.info("Computing penalties using {} processes".format(args["num_processes"]))
 
-    logger.info(
-        "Progress bar will update once the first process is finished"
-    )
+    logger.info("Progress bar will update once the first process is finished")
 
-    pbar = tqdm(total=args['num_processes'])
+    pbar = tqdm(total=args["num_processes"])
 
-    arguments = [(i, expression[sample_names_chunks[i]]) for i in range(args['num_processes'])]
+    arguments = [(i, expression[sample_names_chunks[i]]) for i in range(args["num_processes"])]
 
     for argument in arguments:
         pool.apply_async(partial_map_fun, args=argument, callback=lambda _: pbar.update())
@@ -284,13 +295,13 @@ def computeReactionExpressionParallel(args, model, expression, and_function, sam
     pool.join()
 
     if temp_dir is None:
-        temp_dir = args['temp_dir']
+        temp_dir = args["temp_dir"]
 
     reaction_expression = collectReactionExpressionResults(args, temp_dir)
 
     # Corner case of more samples than processors used
     if old_num_processes is not None:
-        args['num_processes'] = old_num_processes
+        args["num_processes"] = old_num_processes
 
     logger.info("Reaction Expression Computation Completed Successfully")
 
@@ -298,11 +309,10 @@ def computeReactionExpressionParallel(args, model, expression, and_function, sam
 
 
 def _reaction_expression_parallel_map_fun(i, expression, args, model, and_function, sample_names_chunks, temp_dir=None):
-
     if temp_dir is None:
-        temp_dir = args['temp_dir']
+        temp_dir = args["temp_dir"]
 
-    processor_dir = os.path.join(temp_dir, 'penalties_tmp', 'reaction_expression', 'process' + str(i))
+    processor_dir = os.path.join(temp_dir, "penalties_tmp", "reaction_expression", "process" + str(i))
 
     if not os.path.isdir(processor_dir):
         os.makedirs(processor_dir)
@@ -311,16 +321,12 @@ def _reaction_expression_parallel_map_fun(i, expression, args, model, and_functi
 
     reaction_expression = []
     for sample_name in sample_names:
-
         expression_data = expression[sample_name]
-        sample_reaction_expression = eval_reaction_expression_single(
-            model, expression_data, and_function
-        )
+        sample_reaction_expression = eval_reaction_expression_single(model, expression_data, and_function)
         reaction_expression.append(sample_reaction_expression)
 
     reaction_expression = pd.concat(reaction_expression, axis=1)
-    reaction_expression.to_csv(os.path.join(processor_dir, 'reaction_expression.txt'),
-                            sep="\t", header=True)
+    reaction_expression.to_csv(os.path.join(processor_dir, "reaction_expression.txt"), sep="\t", header=True)
 
 
 def collectReactionExpressionResults(args, temp_dir):
@@ -342,13 +348,12 @@ def collectReactionExpressionResults(args, temp_dir):
     reaction_expression = []
 
     # Gather all the results
-    for i in range(args['num_processes']):
-
-        processor_dir = os.path.join(temp_dir, 'penalties_tmp', 'reaction_expression', 'process' + str(i))
+    for i in range(args["num_processes"]):
+        processor_dir = os.path.join(temp_dir, "penalties_tmp", "reaction_expression", "process" + str(i))
 
         sample_reaction_expression = pd.read_csv(
-            os.path.join(processor_dir, 'reaction_expression.txt'),
-            sep='\t', index_col=0)
+            os.path.join(processor_dir, "reaction_expression.txt"), sep="\t", index_col=0
+        )
 
         reaction_expression.append(sample_reaction_expression)
 
@@ -364,11 +369,9 @@ def eval_reaction_expression_single(model, expression_data, and_function):
     Operates on a single cell
     """
 
-    reaction_expression = model.getReactionExpression(
-        expression_data, and_function=and_function)
+    reaction_expression = model.getReactionExpression(expression_data, and_function=and_function)
 
-    reaction_expression = pd.Series(reaction_expression,
-                                    name=expression_data.name)
+    reaction_expression = pd.Series(reaction_expression, name=expression_data.name)
 
     reaction_expression[pd.isnull(reaction_expression)] = 0
 
@@ -400,19 +403,15 @@ def sample_weights_tsne_symmetric(data, perplexity, symmetric):
     # Calculate affinities (distance-squared) between samples
 
     sumData2 = np.sum(data**2, axis=0, keepdims=True)
-    aff = -2*np.dot(data.T, data)
+    aff = -2 * np.dot(data.T, data)
     aff += sumData2
     aff = aff.T
     aff += sumData2
     np.fill_diagonal(aff, 0)
-    aff = aff.astype('float32')
+    aff = aff.astype("float32")
 
     # Run the tsne perplexity procedure
-    pvals = _binary_search_perplexity(
-        aff,
-        perplexity,
-        0
-    )
+    pvals = _binary_search_perplexity(aff, perplexity, 0)
 
     # Symmetrize the pvals
     if symmetric:
@@ -425,6 +424,7 @@ def sample_weights_tsne_symmetric(data, perplexity, symmetric):
     pvals = pd.DataFrame(pvals, index=columns, columns=columns)
 
     return pvals
+
 
 def sample_weights_knn(data_df, num_neighbors, input_knn=None, output_knn=None):
     """
@@ -440,18 +440,19 @@ def sample_weights_knn(data_df, num_neighbors, input_knn=None, output_knn=None):
     data = data_df.values
     ind = None
     if input_knn:
-        logger = logging.getLogger('compass')
+        logger = logging.getLogger("compass")
         ind = utils.read_knn_ind(input_knn, data=data_df)
         if ind is None:
             logger.error("Input KNN invalid: shape and/or indices do not match input data")
-            raise Exception('Compass Error: --input-knn invalid for input data')
+            raise Exception("Compass Error: --input-knn invalid for input data")
         elif ind.shape[1] != num_neighbors:
-            logger.info("Input KNN number of neighbors do not match. Expected: ", num_neighbors, ", but was: ", ind.shape[1])
+            logger.info(
+                "Input KNN number of neighbors do not match. Expected: ", num_neighbors, ", but was: ", ind.shape[1]
+            )
             logger.info("Proceeding using the input knn")
             num_neighbors = ind.shape[1]
         else:
             logger.info("Input KNN successfully loaded")
-        
 
     if ind is None:
         nn = NearestNeighbors(n_neighbors=num_neighbors)
@@ -460,17 +461,22 @@ def sample_weights_knn(data_df, num_neighbors, input_knn=None, output_knn=None):
 
     if output_knn:
         knn_df = pd.DataFrame(ind, index=columns)
-        knn_df.to_csv(output_knn, sep='\t')
+        knn_df.to_csv(output_knn, sep="\t")
 
-    weights = sparse.coo_matrix( (np.ones(num_neighbors * data.shape[1]) / num_neighbors, 
-                                (np.repeat(np.arange(data.shape[1]), num_neighbors), ind.ravel())), 
-                                shape=(data.shape[1], data.shape[1]))
+    weights = sparse.coo_matrix(
+        (
+            np.ones(num_neighbors * data.shape[1]) / num_neighbors,
+            (np.repeat(np.arange(data.shape[1]), num_neighbors), ind.ravel()),
+        ),
+        shape=(data.shape[1], data.shape[1]),
+    )
 
     return weights
 
+
 def compute_knn(args):
-    expression = utils.read_data(args['data'])
-    expression.index = expression.index.astype('str').str.upper()  # Gene names to upper
+    expression = utils.read_data(args["data"])
+    expression.index = expression.index.astype("str").str.upper()  # Gene names to upper
 
     # If genes exist with duplicate symbols
     # Need to aggregate them out
@@ -478,23 +484,21 @@ def compute_knn(args):
         expression.index.name = "GeneSymbol"
         expression = expression.reset_index()
         expression = expression.groupby("GeneSymbol").sum()
-        
-    log_expression = np.log2(expression+1)
-    model = PCA(n_components=min(
-        log_expression.shape[0], log_expression.shape[1], 20)
-    )
-    if pd.__version__ >= '0.24':
+
+    log_expression = np.log2(expression + 1)
+    model = PCA(n_components=min(log_expression.shape[0], log_expression.shape[1], 20))
+    if pd.__version__ >= "0.24":
         pca_expression = model.fit_transform(log_expression.to_numpy().T).T
     else:
         pca_expression = model.fit_transform(log_expression.values.T).T
-    pca_expression = pd.DataFrame(pca_expression,columns=expression.columns)
+    pca_expression = pd.DataFrame(pca_expression, columns=expression.columns)
 
-    nn = NearestNeighbors(n_neighbors=args['num_neighbors'])
+    nn = NearestNeighbors(n_neighbors=args["num_neighbors"])
     nn.fit(pca_expression.T)
     ind = nn.kneighbors(return_distance=False)
 
     knn_df = pd.DataFrame(ind, index=expression.columns)
-    knn_df.to_csv(args['output_knn'], sep='\t')
+    knn_df.to_csv(args["output_knn"], sep="\t")
 
 
 def sample_weights_bio(bio_groups):
@@ -513,20 +517,18 @@ def sample_weights_bio(bio_groups):
     for x in bio_groups:
         if x not in label_dict:
             label_dict[x] = i
-            i = i+1
+            i = i + 1
 
     label_vec = [label_dict[x] for x in bio_groups]
     label_vec = np.array([label_vec])  # creates a 1xN array
 
     # output distance matrix
     sumData2 = np.sum(label_vec**2, axis=0, keepdims=True)
-    aff = -2*np.dot(label_vec.T, label_vec)
+    aff = -2 * np.dot(label_vec.T, label_vec)
     aff += sumData2
     aff = aff.T
     aff += sumData2
 
-    pvals = (aff == 0).astype('float')
+    pvals = (aff == 0).astype("float")
 
     return pvals
-
-    

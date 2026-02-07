@@ -9,24 +9,24 @@ from compass.globals import EXCHANGE_LIMIT, MODEL_DIR
 from compass.models import load_metabolic_model, init_model
 
 import logging
-logger = logging.getLogger('compass')
 
-PATH_2_HUMAN_1 = os.path.join(MODEL_DIR, 'Human1')
-PATH_2_CORE_RXNS = os.path.join(MODEL_DIR, 'Human1', 'core_reactions.txt')
-PATH_2_CORE_RXNS_META = os.path.join(MODEL_DIR, 'Human1', 'core_reactions_md.csv')
-PATH_2_CURRENCY_METS = os.path.join(MODEL_DIR, 'Human1', 'currency_mets.txt')
+logger = logging.getLogger("compass")
+
+PATH_2_HUMAN_1 = os.path.join(MODEL_DIR, "Human1")
+PATH_2_CORE_RXNS = os.path.join(MODEL_DIR, "Human1", "core_reactions.txt")
+PATH_2_CORE_RXNS_META = os.path.join(MODEL_DIR, "Human1", "core_reactions_md.csv")
+PATH_2_CURRENCY_METS = os.path.join(MODEL_DIR, "Human1", "currency_mets.txt")
 
 
 def partition_model(args):
-
     # Parse user input
-    with open(args['select_meta_subsystems']) as f:
+    with open(args["select_meta_subsystems"]) as f:
         text = f.readlines()
     text = [line.strip() for line in text]
     entries = []
     for line in text:
-        line = line.split(':')
-        newline = [line[0]] + line[1].split(';')
+        line = line.split(":")
+        newline = [line[0]] + line[1].split(";")
         newline = [item.strip() for item in newline]
         entries.append(newline)
 
@@ -39,7 +39,7 @@ def partition_model(args):
         meta_subsystems[meta_subsystem_id] = entry[1:]
 
     # Create directories for meta subsystem models
-    meta_subsystem_models_dir = os.path.join(args['output_dir'], 'meta_subsystem_models')
+    meta_subsystem_models_dir = os.path.join(args["output_dir"], "meta_subsystem_models")
     if os.path.exists(meta_subsystem_models_dir) == False:
         os.mkdir(meta_subsystem_models_dir)
 
@@ -47,22 +47,22 @@ def partition_model(args):
         output_dir = os.path.join(meta_subsystem_models_dir, meta_subsystem)
         if os.path.exists(output_dir) == False:
             os.mkdir(output_dir)
-        if os.path.exists(os.path.join(output_dir, 'media')) == False:
-            os.mkdir(os.path.join(output_dir, 'media'))
+        if os.path.exists(os.path.join(output_dir, "media")) == False:
+            os.mkdir(os.path.join(output_dir, "media"))
 
-    media = args['media']
+    media = args["media"]
 
     # *****************************************************************************
 
     # Select reactions that belong to subsystem
-    human1_model = load_metabolic_model('Human1', 'homo_sapiens')
+    human1_model = load_metabolic_model("Human1", "homo_sapiens")
     # Read in Human1 SMAT
     human1_smat = human1_model.getSMAT()
     human1_smat_transposed = human1_model.getSMAT_transposed()
 
-    sbmlDocument = libsbml.readSBMLFromFile(os.path.join(PATH_2_HUMAN_1, 'Human-GEM.xml'))
+    sbmlDocument = libsbml.readSBMLFromFile(os.path.join(PATH_2_HUMAN_1, "Human-GEM.xml"))
     xml_model = sbmlDocument.model
-    
+
     with open(PATH_2_CORE_RXNS) as f:
         core_rxns = f.readlines()
     core_rxns = [r.strip() for r in core_rxns]
@@ -79,15 +79,14 @@ def partition_model(args):
     meta_subsystem_rxnMetas = {}
     meta_subsystem_metMetas = {}
 
-    human1_rxn_meta = pd.read_csv(os.path.join(PATH_2_HUMAN_1, 'Human-GEM_meta.csv'))
-    human1_met_meta = pd.read_csv(os.path.join(PATH_2_HUMAN_1, 'core_mets.csv'))
+    human1_rxn_meta = pd.read_csv(os.path.join(PATH_2_HUMAN_1, "Human-GEM_meta.csv"))
+    human1_met_meta = pd.read_csv(os.path.join(PATH_2_HUMAN_1, "core_mets.csv"))
 
     # SBML model for each meta-subsystem
     meta_subsystem_sbml_doc = {}
 
     # Generate model for each meta subsystem
     for i in range(len(selected_meta_subsystems)):
-
         # Select current meta subsystem
         cur_meta_subsystem = selected_meta_subsystems[i]
 
@@ -97,7 +96,7 @@ def partition_model(args):
 
         # Compute rxns
         cur_meta_subsystem_rxn_ids = []
-        for rxn, subSystem in zip(core_rxn_meta['ID'], core_rxn_meta['SUBSYSTEM']):
+        for rxn, subSystem in zip(core_rxn_meta["ID"], core_rxn_meta["SUBSYSTEM"]):
             if subSystem in meta_subsystems[cur_meta_subsystem]:
                 cur_meta_subsystem_rxn_ids.append(rxn)
 
@@ -107,20 +106,19 @@ def partition_model(args):
         cur_meta_subsystem_met_ids = []
 
         for rxn_id in cur_meta_subsystem_rxn_ids:
-
             rxn = human1_model.reactions[rxn_id]
 
             # reactants
             for met_id, coefficient in rxn.reactants.items():
                 metabolite = human1_model.species[met_id]
-                assert metabolite.compartment in ['c', 'e', 'm', 'i']
+                assert metabolite.compartment in ["c", "e", "m", "i"]
 
                 cur_meta_subsystem_met_ids.append(met_id)
 
             # products
             for met_id, coefficient in rxn.products.items():
                 metabolite = human1_model.species[met_id]
-                assert metabolite.compartment in ['c', 'e', 'm', 'i']
+                assert metabolite.compartment in ["c", "e", "m", "i"]
 
                 cur_meta_subsystem_met_ids.append(met_id)
 
@@ -129,12 +127,12 @@ def partition_model(args):
 
         # Create SBML model for meta-subsystem
         sbmlNamespaces = SBMLNamespaces(3, 1)
-        sbmlNamespaces.addPkgNamespace('fbc', 2)
-        sbmlNamespaces.addPkgNamespace('groups', 1)
+        sbmlNamespaces.addPkgNamespace("fbc", 2)
+        sbmlNamespaces.addPkgNamespace("groups", 1)
 
         sbmlDoc = SBMLDocument(sbmlNamespaces)
-        sbmlDoc.setPackageRequired('fbc', False)
-        sbmlDoc.setPackageRequired('groups', False)
+        sbmlDoc.setPackageRequired("fbc", False)
+        sbmlDoc.setPackageRequired("groups", False)
 
         cur_meta_subsystem_model = sbmlDoc.createModel()
 
@@ -147,8 +145,8 @@ def partition_model(args):
             cur_meta_subsystem_model.getPlugin(1).addGroup(group)
 
         # Set IDs
-        cur_meta_subsystem_model.setMetaId(f'{cur_meta_subsystem}_Model')
-        cur_meta_subsystem_model.setId(f'{cur_meta_subsystem}_Model')
+        cur_meta_subsystem_model.setMetaId(f"{cur_meta_subsystem}_Model")
+        cur_meta_subsystem_model.setId(f"{cur_meta_subsystem}_Model")
 
         # Set unit definitions
         for unit_def in xml_model.getListOfUnitDefinitions():
@@ -156,7 +154,7 @@ def partition_model(args):
 
         # Set compartments
         for compartment in xml_model.getListOfCompartments():
-            if compartment.getId() not in ['c', 'e', 'm', 'i']:
+            if compartment.getId() not in ["c", "e", "m", "i"]:
                 continue
             cur_meta_subsystem_model.addCompartment(compartment)
 
@@ -180,27 +178,42 @@ def partition_model(args):
         meta_subsystem_met_ids[cur_meta_subsystem] = cur_meta_subsystem_met_ids
         meta_subsystem_sbml_doc[cur_meta_subsystem] = sbmlDoc
 
-        cur_meta_subsystem_rxnMeta = human1_rxn_meta[human1_rxn_meta['ID'].isin(cur_meta_subsystem_rxn_ids)].reset_index(drop=True).sort_values('ID')
+        cur_meta_subsystem_rxnMeta = (
+            human1_rxn_meta[human1_rxn_meta["ID"].isin(cur_meta_subsystem_rxn_ids)]
+            .reset_index(drop=True)
+            .sort_values("ID")
+        )
         meta_subsystem_rxnMetas[cur_meta_subsystem] = cur_meta_subsystem_rxnMeta
         assert len(meta_subsystem_rxnMetas[cur_meta_subsystem]) == len(cur_meta_subsystem_rxn_ids)
 
-        cur_meta_subsystem_metMeta = human1_met_meta[human1_met_meta['id'].isin(cur_meta_subsystem_met_ids)].reset_index(drop=True).sort_values('id')
+        cur_meta_subsystem_metMeta = (
+            human1_met_meta[human1_met_meta["id"].isin(cur_meta_subsystem_met_ids)]
+            .reset_index(drop=True)
+            .sort_values("id")
+        )
         meta_subsystem_metMetas[cur_meta_subsystem] = cur_meta_subsystem_metMeta
         assert len(meta_subsystem_metMetas[cur_meta_subsystem]) == len(cur_meta_subsystem_met_ids)
 
         # Temporarily save model
-        libsbml.writeSBMLToFile(sbmlDoc, os.path.join(output_dir, f'{cur_meta_subsystem}_model.xml'))
+        libsbml.writeSBMLToFile(sbmlDoc, os.path.join(output_dir, f"{cur_meta_subsystem}_model.xml"))
 
-        shutil.copy(os.path.join(PATH_2_HUMAN_1, 'media', f'{media}.json'), os.path.join(output_dir, 'media', f'{media}.json'))
+        shutil.copy(
+            os.path.join(PATH_2_HUMAN_1, "media", f"{media}.json"), os.path.join(output_dir, "media", f"{media}.json")
+        )
 
     # **********************************************************************
 
     # Add exchange reaction for all metabolites associated with subsystem
 
     for meta_subsystem in selected_meta_subsystems:
-        meta_subsystem_model = init_model(meta_subsystem, species='homo_sapiens', exchange_limit=EXCHANGE_LIMIT, media=args['media'],
-                                    metabolic_model_dir=meta_subsystem_models_dir)
-        
+        meta_subsystem_model = init_model(
+            meta_subsystem,
+            species="homo_sapiens",
+            exchange_limit=EXCHANGE_LIMIT,
+            media=args["media"],
+            metabolic_model_dir=meta_subsystem_models_dir,
+        )
+
         meta_subsystem_xml_model = meta_subsystem_sbml_doc[meta_subsystem].model
 
         meta_subsystem_model_smat = meta_subsystem_model.getSMAT()
@@ -210,7 +223,6 @@ def partition_model(args):
             new_rxn_meta_dict[colname] = []
 
         for met in meta_subsystem_met_ids[meta_subsystem]:
-
             # First check if there is already an exchange reaction associated with the current metabolite
             has_exchange = False
             smat_row = meta_subsystem_model_smat[met]
@@ -227,28 +239,35 @@ def partition_model(args):
 
             # Add exchange reaction
             exchange_rxn = meta_subsystem_xml_model.createReaction()
-            exchange_rxn.setId(f'{met}_EXCHANGE_{meta_subsystem}')
-            exchange_rxn.setName(f'{met}_EXCHANGE_{meta_subsystem}')
+            exchange_rxn.setId(f"{met}_EXCHANGE_{meta_subsystem}")
+            exchange_rxn.setName(f"{met}_EXCHANGE_{meta_subsystem}")
             met_obj = meta_subsystem_xml_model.getSpecies(met)
             exchange_rxn.addReactant(met_obj, 1.0)
-            exchange_rxn.getPlugin('fbc').setUpperFluxBound('FB3N1000')
-            exchange_rxn.getPlugin('fbc').setLowerFluxBound('FB1N1000')
+            exchange_rxn.getPlugin("fbc").setUpperFluxBound("FB3N1000")
+            exchange_rxn.getPlugin("fbc").setLowerFluxBound("FB1N1000")
 
-            full_met_name = human1_met_meta[human1_met_meta['id'] == met]['name'].item() + '[' + human1_met_meta[human1_met_meta['id'] == met]['compartment'].item() + ']'
+            full_met_name = (
+                human1_met_meta[human1_met_meta["id"] == met]["name"].item()
+                + "["
+                + human1_met_meta[human1_met_meta["id"] == met]["compartment"].item()
+                + "]"
+            )
 
-            meta_subsystem_rxn_ids[meta_subsystem].append(f'{met}_EXCHANGE_{meta_subsystem}')
+            meta_subsystem_rxn_ids[meta_subsystem].append(f"{met}_EXCHANGE_{meta_subsystem}")
 
             for colname in new_rxn_meta_dict.keys():
-                if colname == 'ID' or colname == 'NAME':
-                    new_rxn_meta_dict[colname].append(f'{met}_EXCHANGE_{meta_subsystem}')
-                elif colname == 'EQUATION':
-                    new_rxn_meta_dict[colname].append(f'{full_met_name} <=> ϕ')
-                elif colname == 'SUBSYSTEM':
+                if colname == "ID" or colname == "NAME":
+                    new_rxn_meta_dict[colname].append(f"{met}_EXCHANGE_{meta_subsystem}")
+                elif colname == "EQUATION":
+                    new_rxn_meta_dict[colname].append(f"{full_met_name} <=> ϕ")
+                elif colname == "SUBSYSTEM":
                     new_rxn_meta_dict[colname].append(meta_subsystem)
                 else:
-                    new_rxn_meta_dict[colname].append('')
+                    new_rxn_meta_dict[colname].append("")
 
-        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat((meta_subsystem_rxnMetas[meta_subsystem], pd.DataFrame.from_dict(new_rxn_meta_dict)))
+        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat(
+            (meta_subsystem_rxnMetas[meta_subsystem], pd.DataFrame.from_dict(new_rxn_meta_dict))
+        )
         assert len(meta_subsystem_rxnMetas[meta_subsystem]) == len(meta_subsystem_rxn_ids[meta_subsystem])
 
         # Specify output directory for current meta subsystem
@@ -256,9 +275,9 @@ def partition_model(args):
 
         # Save list of reactions to run COMPASS on
         # One-hop neighbor reactions and additional exchange reactions do not need to be computed
-        with open(os.path.join(output_dir, f'{meta_subsystem}_rxns.txt'), 'w') as f:
+        with open(os.path.join(output_dir, f"{meta_subsystem}_rxns.txt"), "w") as f:
             for rxn_id in meta_subsystem_rxn_ids[meta_subsystem]:
-                f.write(f'{rxn_id}\n')
+                f.write(f"{rxn_id}\n")
 
     # **********************************************************************
 
@@ -270,7 +289,6 @@ def partition_model(args):
     currency_mets = [m.strip() for m in currency_mets]
 
     for meta_subsystem in selected_meta_subsystems:
-
         meta_subsystem_xml_model = meta_subsystem_sbml_doc[meta_subsystem].model
 
         output_dir = os.path.join(meta_subsystem_models_dir, meta_subsystem)
@@ -280,7 +298,6 @@ def partition_model(args):
         new_met_ids = set()
 
         for met_id in meta_subsystem_met_ids[meta_subsystem]:
-
             if met_id in currency_mets:
                 continue
 
@@ -293,11 +310,11 @@ def partition_model(args):
                     continue
 
                 new_rxn_ids.add(rxn_id)
-            
+
                 associated_smat_transpose_row = human1_smat_transposed[rxn_id]
                 for new_met_id, coef in associated_smat_transpose_row:
                     metabolite = human1_model.species[new_met_id]
-                    assert metabolite.compartment in ['c', 'e', 'm', 'i']
+                    assert metabolite.compartment in ["c", "e", "m", "i"]
                     if new_met_id in meta_subsystem_met_ids[meta_subsystem]:
                         continue
                     new_met_ids.add(new_met_id)
@@ -320,11 +337,21 @@ def partition_model(args):
 
             rxn_obj = xml_model.getReaction(new_rxn_id)
             meta_subsystem_xml_model.addReaction(rxn_obj)
-        
-        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat((meta_subsystem_rxnMetas[meta_subsystem], human1_rxn_meta[human1_rxn_meta['ID'].isin(new_rxn_ids)].sort_values('ID')))
+
+        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat(
+            (
+                meta_subsystem_rxnMetas[meta_subsystem],
+                human1_rxn_meta[human1_rxn_meta["ID"].isin(new_rxn_ids)].sort_values("ID"),
+            )
+        )
         assert len(meta_subsystem_rxnMetas[meta_subsystem]) == len(meta_subsystem_rxn_ids[meta_subsystem])
 
-        meta_subsystem_metMetas[meta_subsystem] = pd.concat((meta_subsystem_metMetas[meta_subsystem], human1_met_meta[human1_met_meta['id'].isin(new_met_ids)].sort_values('id')))
+        meta_subsystem_metMetas[meta_subsystem] = pd.concat(
+            (
+                meta_subsystem_metMetas[meta_subsystem],
+                human1_met_meta[human1_met_meta["id"].isin(new_met_ids)].sort_values("id"),
+            )
+        )
         assert len(meta_subsystem_metMetas[meta_subsystem]) == len(meta_subsystem_met_ids[meta_subsystem])
 
         # Add exchange reactions for new metabolites
@@ -336,84 +363,97 @@ def partition_model(args):
             new_rxn_meta_dict[colname] = []
 
         for new_met_id in new_met_ids:
-
             # Add exchange reaction
             exchange_rxn = meta_subsystem_xml_model.createReaction()
-            exchange_rxn.setId(f'{new_met_id}_EXCHANGE_{meta_subsystem}')
-            exchange_rxn.setName(f'{new_met_id}_EXCHANGE_{meta_subsystem}')
+            exchange_rxn.setId(f"{new_met_id}_EXCHANGE_{meta_subsystem}")
+            exchange_rxn.setName(f"{new_met_id}_EXCHANGE_{meta_subsystem}")
             met_obj = meta_subsystem_xml_model.getSpecies(new_met_id)
             exchange_rxn.addReactant(met_obj, 1.0)
-            exchange_rxn.getPlugin('fbc').setUpperFluxBound('FB3N1000')
-            exchange_rxn.getPlugin('fbc').setLowerFluxBound('FB1N1000')
+            exchange_rxn.getPlugin("fbc").setUpperFluxBound("FB3N1000")
+            exchange_rxn.getPlugin("fbc").setLowerFluxBound("FB1N1000")
 
-            full_met_name = human1_met_meta[human1_met_meta['id'] == new_met_id]['name'].item() + '[' + human1_met_meta[human1_met_meta['id'] == new_met_id]['compartment'].item() + ']'
+            full_met_name = (
+                human1_met_meta[human1_met_meta["id"] == new_met_id]["name"].item()
+                + "["
+                + human1_met_meta[human1_met_meta["id"] == new_met_id]["compartment"].item()
+                + "]"
+            )
 
-            meta_subsystem_rxn_ids[meta_subsystem].append(f'{new_met_id}_EXCHANGE_{meta_subsystem}')
+            meta_subsystem_rxn_ids[meta_subsystem].append(f"{new_met_id}_EXCHANGE_{meta_subsystem}")
 
             for colname in new_rxn_meta_dict.keys():
-                if colname == 'ID' or colname == 'NAME':
-                    new_rxn_meta_dict[colname].append(f'{new_met_id}_EXCHANGE_{meta_subsystem}')
-                elif colname == 'EQUATION':
-                    new_rxn_meta_dict[colname].append(f'{full_met_name} <=> ϕ')
-                elif colname == 'SUBSYSTEM':
+                if colname == "ID" or colname == "NAME":
+                    new_rxn_meta_dict[colname].append(f"{new_met_id}_EXCHANGE_{meta_subsystem}")
+                elif colname == "EQUATION":
+                    new_rxn_meta_dict[colname].append(f"{full_met_name} <=> ϕ")
+                elif colname == "SUBSYSTEM":
                     new_rxn_meta_dict[colname].append(meta_subsystem)
                 else:
-                    new_rxn_meta_dict[colname].append('')
-            
-        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat((meta_subsystem_rxnMetas[meta_subsystem], pd.DataFrame.from_dict(new_rxn_meta_dict)))
+                    new_rxn_meta_dict[colname].append("")
+
+        meta_subsystem_rxnMetas[meta_subsystem] = pd.concat(
+            (meta_subsystem_rxnMetas[meta_subsystem], pd.DataFrame.from_dict(new_rxn_meta_dict))
+        )
         assert len(meta_subsystem_rxnMetas[meta_subsystem]) == len(meta_subsystem_rxn_ids[meta_subsystem])
 
         # Save final model
-        libsbml.writeSBMLToFile(meta_subsystem_sbml_doc[meta_subsystem], os.path.join(output_dir, f'{meta_subsystem}_model.xml'))
-        
+        libsbml.writeSBMLToFile(
+            meta_subsystem_sbml_doc[meta_subsystem], os.path.join(output_dir, f"{meta_subsystem}_model.xml")
+        )
+
         # Save media file
-        shutil.copy(os.path.join(PATH_2_HUMAN_1, 'media', f'{media}.json'), os.path.join(output_dir, 'media', f'{media}.json'))
+        shutil.copy(
+            os.path.join(PATH_2_HUMAN_1, "media", f"{media}.json"), os.path.join(output_dir, "media", f"{media}.json")
+        )
 
         # Save metadata file
-        meta_subsystem_rxnMetas[meta_subsystem].to_csv(os.path.join(output_dir, f'{meta_subsystem}_rxn_meta.csv'), index=False)
-        meta_subsystem_metMetas[meta_subsystem].to_csv(os.path.join(output_dir, f'{meta_subsystem}_met_meta.csv'), index=False)
+        meta_subsystem_rxnMetas[meta_subsystem].to_csv(
+            os.path.join(output_dir, f"{meta_subsystem}_rxn_meta.csv"), index=False
+        )
+        meta_subsystem_metMetas[meta_subsystem].to_csv(
+            os.path.join(output_dir, f"{meta_subsystem}_met_meta.csv"), index=False
+        )
 
         # Save all reactions and metabolites associated with meta-subsystem
-        with open(os.path.join(output_dir, f'{meta_subsystem}_all_rxns.txt'), 'w') as f:
+        with open(os.path.join(output_dir, f"{meta_subsystem}_all_rxns.txt"), "w") as f:
             for rxn_id in meta_subsystem_rxn_ids[meta_subsystem]:
-                f.write(f'{rxn_id}\n')
+                f.write(f"{rxn_id}\n")
 
-        with open(os.path.join(output_dir, f'{meta_subsystem}_all_mets.txt'), 'w') as f:
+        with open(os.path.join(output_dir, f"{meta_subsystem}_all_mets.txt"), "w") as f:
             for met_id in meta_subsystem_met_ids[meta_subsystem]:
-                f.write(f'{met_id}\n')
+                f.write(f"{met_id}\n")
 
     # **********************************************************************
 
-    if args['oxygen'] is not None:
-
-        fname = media + '_oxygen_' + str(args['oxygen'])
-        args['media'] = fname
+    if args["oxygen"] is not None:
+        fname = media + "_oxygen_" + str(args["oxygen"])
+        args["media"] = fname
 
         for meta_subsystem in selected_meta_subsystems:
-            logger.info(f'Modifying oxygen uptake reaction bounds for {meta_subsystem}')
+            logger.info(f"Modifying oxygen uptake reaction bounds for {meta_subsystem}")
 
             output_dir = os.path.join(meta_subsystem_models_dir, meta_subsystem)
-            media_file = media + '.json'
-            media_file = os.path.join(output_dir, 'media', media_file)
+            media_file = media + ".json"
+            media_file = os.path.join(output_dir, "media", media_file)
             with open(media_file) as fin:
                 media_file_json = json.load(fin)
 
-            if f'MAM02630c_EXCHANGE_{meta_subsystem}' in meta_subsystem_rxn_ids[meta_subsystem]:
-                logger.info(f'Added MAM02630c for {meta_subsystem}')
-                oxygen_c_rxn = f'MAM02630c_EXCHANGE_{meta_subsystem}_neg'
-                media_file_json.update({oxygen_c_rxn: float(args['oxygen'])})
-            if f'MAM02630m_EXCHANGE_{meta_subsystem}' in meta_subsystem_rxn_ids[meta_subsystem]:
-                logger.info(f'Added MAM02630m for {meta_subsystem}')
-                oxygen_m_rxn = f'MAM02630m_EXCHANGE_{meta_subsystem}_neg'
-                media_file_json.update({oxygen_m_rxn: float(args['oxygen'])})
-            if f'MAM02630e_EXCHANGE_{meta_subsystem}' in meta_subsystem_rxn_ids[meta_subsystem]:
-                logger.info(f'Added MAM02630e for {meta_subsystem}')
-                oxygen_e_rxn = f'MAM02630e_EXCHANGE_{meta_subsystem}_neg'
-                media_file_json.update({oxygen_e_rxn: float(args['oxygen'])})
+            if f"MAM02630c_EXCHANGE_{meta_subsystem}" in meta_subsystem_rxn_ids[meta_subsystem]:
+                logger.info(f"Added MAM02630c for {meta_subsystem}")
+                oxygen_c_rxn = f"MAM02630c_EXCHANGE_{meta_subsystem}_neg"
+                media_file_json.update({oxygen_c_rxn: float(args["oxygen"])})
+            if f"MAM02630m_EXCHANGE_{meta_subsystem}" in meta_subsystem_rxn_ids[meta_subsystem]:
+                logger.info(f"Added MAM02630m for {meta_subsystem}")
+                oxygen_m_rxn = f"MAM02630m_EXCHANGE_{meta_subsystem}_neg"
+                media_file_json.update({oxygen_m_rxn: float(args["oxygen"])})
+            if f"MAM02630e_EXCHANGE_{meta_subsystem}" in meta_subsystem_rxn_ids[meta_subsystem]:
+                logger.info(f"Added MAM02630e for {meta_subsystem}")
+                oxygen_e_rxn = f"MAM02630e_EXCHANGE_{meta_subsystem}_neg"
+                media_file_json.update({oxygen_e_rxn: float(args["oxygen"])})
 
-            oxygen_media_file = os.path.join(output_dir, 'media', fname + '.json')
+            oxygen_media_file = os.path.join(output_dir, "media", fname + ".json")
             if not os.path.exists(oxygen_media_file):
-                fout = open(oxygen_media_file, 'w')
+                fout = open(oxygen_media_file, "w")
                 json.dump(media_file_json, fout)
                 fout.close()
 

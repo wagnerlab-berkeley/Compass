@@ -31,6 +31,7 @@ def get_gurobi_config(threads: int | None = None, method: int | None = None) -> 
         GRB.Param.Method: method,  # 0: Automatic, 1: Primal Simplex, 2: Dual Simplex, etc.
     }
 
+
 class GurobiOptimizer(Optimizer):
     """
     Gurobi-based implementation of the Optimizer.
@@ -49,7 +50,7 @@ class GurobiOptimizer(Optimizer):
         Builds the initial Gurobi model from the provided metabolic model.
         """
         # Gurobi WLS License
-        if 'WLSACCESSID' in self.credentials and 'WLSSECRET' in self.credentials and 'LICENSEID' in self.credentials:
+        if "WLSACCESSID" in self.credentials and "WLSSECRET" in self.credentials and "LICENSEID" in self.credentials:
             env = gp.Env(params=self.credentials)
         # Gurobi Named-User License
         else:

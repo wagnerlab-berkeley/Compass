@@ -1,6 +1,7 @@
 """
 Helps to resolve gene symbols by using information from HGNC
 """
+
 from __future__ import print_function, division, absolute_import
 
 
@@ -76,12 +77,10 @@ def resolve_genes(model):
 
     # Load gene symbol information
 
-    hgnc_file = os.path.join(
-        RESOURCE_DIR, "Genes", "HGNC.json.gz"
-    )
+    hgnc_file = os.path.join(RESOURCE_DIR, "Genes", "HGNC.json.gz")
 
-    data_dict = json.loads(gzip.open(hgnc_file).read().decode('utf-8'))
-    genes = data_dict['response']['docs']
+    data_dict = json.loads(gzip.open(hgnc_file).read().decode("utf-8"))
+    genes = data_dict["response"]["docs"]
 
     # Key dictionary based on the identifiers that we currently have
     if field_type == "HGNC":
@@ -103,11 +102,9 @@ def resolve_genes(model):
             gene = assoc.gene
             if gene.name in gene_dict:
                 gene_info = gene_dict[gene.name]
-                gene.name = gene_info['symbol'].upper()
-                if 'alias_symbol' in gene_info:
-                    gene.alt_symbols = [
-                        x.upper() for x in gene_info['alias_symbol']
-                    ]
+                gene.name = gene_info["symbol"].upper()
+                if "alias_symbol" in gene_info:
+                    gene.alt_symbols = [x.upper() for x in gene_info["alias_symbol"]]
         else:
             for child in assoc.children:
                 update_association(child)
@@ -126,25 +123,23 @@ def load_mgi():
     ortho2mouse = defaultdict(set)
     ortho2human = defaultdict(set)
 
-    mgi_file = os.path.join(
-        RESOURCE_DIR, "Genes", "HOM_MouseHumanSequence.rpt.gz")
+    mgi_file = os.path.join(RESOURCE_DIR, "Genes", "HOM_MouseHumanSequence.rpt.gz")
 
     data = pd.read_csv(mgi_file, sep="\t")
 
-    hgs = data.loc[data['Common Organism Name'] == 'human']
-    mgs = data.loc[data['Common Organism Name'] == 'mouse, laboratory']
+    hgs = data.loc[data["Common Organism Name"] == "human"]
+    mgs = data.loc[data["Common Organism Name"] == "mouse, laboratory"]
 
-    for ortho_id, hg in zip(hgs['HomoloGene ID'], hgs['Symbol']):
+    for ortho_id, hg in zip(hgs["HomoloGene ID"], hgs["Symbol"]):
         ortho2human[ortho_id].add(hg.upper())
 
-    for ortho_id, mg in zip(mgs['HomoloGene ID'], mgs['Symbol']):
+    for ortho_id, mg in zip(mgs["HomoloGene ID"], mgs["Symbol"]):
         ortho2mouse[ortho_id].add(mg.upper())
 
     return ortho2human, ortho2mouse
 
 
 def convert_species(model, target_species):
-
     if target_species == "homo_sapiens":
         return  # Nothing to do, assume input is human
 
@@ -187,7 +182,7 @@ def convert_species(model, target_species):
                 # About 30 human genes map to multiple mouse genes
                 # Replace them with an OR association
 
-                assoc.type = 'or'
+                assoc.type = "or"
                 assoc.gene = None
                 assoc.children = []
                 for mg in mouse_genes:
@@ -196,7 +191,7 @@ def convert_species(model, target_species):
                     new_gene.name = mg
 
                     new_assoc = Association()
-                    new_assoc.type = 'gene'
+                    new_assoc.type = "gene"
                     new_assoc.gene = new_gene
 
                     assoc.children.append(new_assoc)

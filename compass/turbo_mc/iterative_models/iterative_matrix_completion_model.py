@@ -49,13 +49,12 @@ class IterativeMCMWithPrescribedPcts(IterativeMatrixCompletionModel):
     Given the percent of observations to perform in each round
     (sampling_densities), does iterative querying.
     """
+
     def __init__(
-            self,
-            sampling_densities: List[float],
-            cv_models: List[CVMatrixCompletionModel],
-            verbose: bool = False):
+        self, sampling_densities: List[float], cv_models: List[CVMatrixCompletionModel], verbose: bool = False
+    ):
         if len(sampling_densities) != len(cv_models):
-            raise ValueError('sampling_densities and cv_models should have the same length!')
+            raise ValueError("sampling_densities and cv_models should have the same length!")
         self.sampling_densities = sampling_densities
         self.cv_models = copy.deepcopy(cv_models)
         self.verbose = verbose
@@ -63,9 +62,7 @@ class IterativeMCMWithPrescribedPcts(IterativeMatrixCompletionModel):
     def fit(self, matrix_oracle: MatrixOracle, Z: Optional[np.array] = None):
         X_observed = matrix_oracle.observed_matrix()
         if not np.all(np.isnan(X_observed)):
-            raise ValueError(
-                "Received a warm-started oracle, but I don't yet have logic to handle "
-                "that case smartly.")
+            raise ValueError("Received a warm-started oracle, but I don't yet have logic to handle that case smartly.")
         curr_cv_spearman_r2s = None  # type: Optional[np.array]
         for i, (sampling_density, cv_model) in enumerate(zip(self.sampling_densities, self.cv_models)):
             if self.verbose:
@@ -99,16 +96,12 @@ class IterativeMCMWithPrescribedPcts(IterativeMatrixCompletionModel):
 
 
 def smart_list_of_matrix_indices(
-        R: int,
-        C: int,
-        X_observed: np.array,
-        sampling_density: float,
-        cv_spearman_r2s: np.array
+    R: int, C: int, X_observed: np.array, sampling_density: float, cv_spearman_r2s: np.array
 ) -> List[Tuple[int, int]]:
     r"""
     Queries the bottom half of features with poorest spearman R2.
     """
-    assert(len(cv_spearman_r2s) == C)
+    assert len(cv_spearman_r2s) == C
     columns_with_poor_performance = np.argsort(cv_spearman_r2s)[: (C // 2)]
     observations_per_column = int(2 * R * sampling_density)
     res = []  # type: List[Tuple[int, int]]
@@ -138,19 +131,21 @@ class IterativeMCMWithGuaranteedSpearmanR2(IterativeMatrixCompletionModel):
     entry if possible, else imputes the entry using the underlying
     low-rank model.
     """
+
     def __init__(
-            self,
-            cv_model: Union[CVMatrixCompletionModel,
-                            Callable[[IterativeMCMState], CVMatrixCompletionModel]],
-            requested_cv_spearman_r2: float = 0.7,
-            sampling_density: float = 0.01,
-            finally_refit_model: Optional[Union[MatrixCompletionModel,
-                                                Callable[[IterativeMCMState], MatrixCompletionModel]]] = None,
-            min_pct_meet_sr2_requirement: float = 1.0,
-            verbose: bool = False,
-            plot_progress: bool = False,
-            max_iterations: int = 1000000,
-            logger_dir: str = ""):
+        self,
+        cv_model: Union[CVMatrixCompletionModel, Callable[[IterativeMCMState], CVMatrixCompletionModel]],
+        requested_cv_spearman_r2: float = 0.7,
+        sampling_density: float = 0.01,
+        finally_refit_model: Optional[
+            Union[MatrixCompletionModel, Callable[[IterativeMCMState], MatrixCompletionModel]]
+        ] = None,
+        min_pct_meet_sr2_requirement: float = 1.0,
+        verbose: bool = False,
+        plot_progress: bool = False,
+        max_iterations: int = 1000000,
+        logger_dir: str = "",
+    ):
         r"""
         :param cv_model: What CV model is fit at each step. If a different model
             wants to be fit at each iteration, a function mapping iteration number
@@ -193,13 +188,10 @@ class IterativeMCMWithGuaranteedSpearmanR2(IterativeMatrixCompletionModel):
         curr_cv_spearman_r2s = None  # type: Optional[np.array]
         for iteration in range(self.max_iterations):
             iteration_start_time = time.time()
-            self.logger.info('\n' + '*' * 8 + f" Iteration {iteration + 1} " + '*' * 8)
-            cv_model =\
-                self.cv_model_func(
-                    IterativeMCMState(
-                        R=R,
-                        C=C,
-                        sampled_density=sampling_density * (iteration + 1)))
+            self.logger.info("\n" + "*" * 8 + f" Iteration {iteration + 1} " + "*" * 8)
+            cv_model = self.cv_model_func(
+                IterativeMCMState(R=R, C=C, sampled_density=sampling_density * (iteration + 1))
+            )
 
             # for each reaction, choose which cells to observe entry
             if iteration == 0:
@@ -213,12 +205,9 @@ class IterativeMCMWithGuaranteedSpearmanR2(IterativeMatrixCompletionModel):
                     matrix_indices = list(zip(observed_rows, observed_cols))
             else:
                 # We have CV information, use it!
-                matrix_indices =\
-                    _choose_entries_from_underperforming_columns(
-                        X_observed,
-                        sampling_density,
-                        curr_cv_spearman_r2s,
-                        self.requested_cv_spearman_r2)
+                matrix_indices = _choose_entries_from_underperforming_columns(
+                    X_observed, sampling_density, curr_cv_spearman_r2s, self.requested_cv_spearman_r2
+                )
             self.logger.info("Querying MatrixOracle ...")
             matrix_oracle.observe_entries(matrix_indices, iteration)
             X_observed = matrix_oracle.observed_matrix()
@@ -231,11 +220,17 @@ class IterativeMCMWithGuaranteedSpearmanR2(IterativeMatrixCompletionModel):
             curr_cv_spearman_r2s = cv_model.cv_spearman_r2s()
             _override_fully_observed_columns_sr2_to_1(curr_cv_spearman_r2s, X_observed)
             worse_cv_spearman_r2 = np.sort(curr_cv_spearman_r2s)[
-                min(int(C * (1.0 - self.min_pct_meet_sr2_requirement)), C - 1)]
+                min(int(C * (1.0 - self.min_pct_meet_sr2_requirement)), C - 1)
+            ]
             self.logger.info(
                 "Worse@%.2f vs Mean vs Requested CV Spearman R2 = %.3f vs. %.3f vs %.3f"
-                % (self.min_pct_meet_sr2_requirement, worse_cv_spearman_r2, curr_cv_spearman_r2s.mean(),
-                   self.requested_cv_spearman_r2))
+                % (
+                    self.min_pct_meet_sr2_requirement,
+                    worse_cv_spearman_r2,
+                    curr_cv_spearman_r2s.mean(),
+                    self.requested_cv_spearman_r2,
+                )
+            )
             if self.plot_progress:  # pragma: no cover
                 plt.title("Histogram of current CV Spearman R2s")
                 plt.hist(curr_cv_spearman_r2s, bins=20)
@@ -248,7 +243,8 @@ class IterativeMCMWithGuaranteedSpearmanR2(IterativeMatrixCompletionModel):
                 if self.verbose:
                     self.logger.info(
                         "Achieved goal of %.3f CV Spearman R2 >= %.3f!"
-                        % (self.min_pct_meet_sr2_requirement, self.requested_cv_spearman_r2))
+                        % (self.min_pct_meet_sr2_requirement, self.requested_cv_spearman_r2)
+                    )
                 break
         # The reported cv_spearman_r2s are the ones of the last CV model.
         self.curr_cv_spearman_r2s = curr_cv_spearman_r2s
@@ -259,13 +255,11 @@ class IterativeMCMWithGuaranteedSpearmanR2(IterativeMatrixCompletionModel):
             if callable(self.finally_refit_model_func):
                 self.logger.info(
                     f"\nRefitting final model on ({R}, {C}) matrix after observing "
-                    + "%.3f/1.00 pct of entries ..." % (sampling_density * (iteration + 1)))
-                final_model =\
-                    self.finally_refit_model_func(
-                        IterativeMCMState(
-                            R=R,
-                            C=C,
-                            sampled_density=sampling_density * (iteration + 1)))
+                    + "%.3f/1.00 pct of entries ..." % (sampling_density * (iteration + 1))
+                )
+                final_model = self.finally_refit_model_func(
+                    IterativeMCMState(R=R, C=C, sampled_density=sampling_density * (iteration + 1))
+                )
             else:
                 self.logger.info("\nNot refitting any model at the very end.")
                 final_model = copy.deepcopy(self.finally_refit_model_func)
@@ -278,7 +272,8 @@ class IterativeMCMWithGuaranteedSpearmanR2(IterativeMatrixCompletionModel):
             f"Finished iterative fitting! "
             f"Number of iterations used: {iteration + 1}; "
             + "Pct of matrix sampled: %.3f/1.00; " % pct_observed
-            + "Total time: %.0fs" % (time.time() - fit_start_time))
+            + "Total time: %.0fs" % (time.time() - fit_start_time)
+        )
 
     def predict_all(self) -> np.array:
         r"""
@@ -294,9 +289,7 @@ class IterativeMCMWithGuaranteedSpearmanR2(IterativeMatrixCompletionModel):
         return self.X_observed
 
 
-def _override_fully_observed_columns_sr2_to_1(
-        curr_cv_spearman_r2s: np.array,
-        X_observed: np.array) -> None:
+def _override_fully_observed_columns_sr2_to_1(curr_cv_spearman_r2s: np.array, X_observed: np.array) -> None:
     r"""
     The curr_cv_spearman_r2s of fully observed columns is made 1.
     Note that the np.array curr_cv_spearman_r2s is modified in-place.
@@ -306,10 +299,7 @@ def _override_fully_observed_columns_sr2_to_1(
 
 
 def _choose_entries_from_underperforming_columns(
-        X_observed: np.array,
-        sampling_density: float,
-        cv_spearman_r2s: np.array,
-        requested_cv_spearman_r2: float
+    X_observed: np.array, sampling_density: float, cv_spearman_r2s: np.array, requested_cv_spearman_r2: float
 ) -> List[Tuple[int, int]]:
     r"""
     Distributes budget evenly amoung all columns whose spearman R2 is below the
@@ -321,9 +311,9 @@ def _choose_entries_from_underperforming_columns(
     :param requested_cv_spearman_r2: The minimum Spaerman R2 we want to achieve.
     :return: The list of (row, column) pairs where to sample next based on this strategy.
     """
-    assert(len(cv_spearman_r2s[cv_spearman_r2s <= requested_cv_spearman_r2]) > 0)
+    assert len(cv_spearman_r2s[cv_spearman_r2s <= requested_cv_spearman_r2]) > 0
     R, C = X_observed.shape
-    assert(len(cv_spearman_r2s) == C)
+    assert len(cv_spearman_r2s) == C
     unobserved_per_column = np.isnan(X_observed).sum(axis=0)
     total_budget = int(sampling_density * R * C)
     # print(f"total_budget = {total_budget}")
@@ -353,7 +343,7 @@ def _choose_entries_from_underperforming_columns(
             chosen_rows = np.random.choice(unobserved_rows, n_obs_for_this_column, replace=False)
             total_budget -= n_obs_for_this_column
             res += [(r, c) for r in chosen_rows]
-        assert(total_budget == 0)
+        assert total_budget == 0
         # print(f"res = {res}")
     else:
         # print(f"Will query all poor columns, then distribute remaining queries amongst all other columns")
@@ -364,7 +354,7 @@ def _choose_entries_from_underperforming_columns(
                     if np.isnan(X_observed[r, c]):
                         res.append((r, c))
                 column_still_available[c] = False
-        assert(len(res) == n_unobserved_for_poor_columns)
+        assert len(res) == n_unobserved_for_poor_columns
         total_budget = total_budget - len(res)
         # Split remaining budget uniformly amongst 'good' columns.
         rows, cols = np.where(np.isnan(X_observed))
@@ -373,9 +363,9 @@ def _choose_entries_from_underperforming_columns(
         # print(f"remaining_entries = {remaining_entries}")
         # if len(remaining_entries) <= total_budget:
         #     print(f"I ended up querying the full matrix!")
-        indices = np.random.choice(len(remaining_entries),
-                                   size=min(len(remaining_entries), total_budget),
-                                   replace=False)
+        indices = np.random.choice(
+            len(remaining_entries), size=min(len(remaining_entries), total_budget), replace=False
+        )
         # print(f"indices = {indices}")
         res += [remaining_entries[i] for i in indices]
         # print(f"res = {res}")

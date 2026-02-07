@@ -8,6 +8,7 @@ MatrixCompletionModel. Said model is fit once for each fold. Out-of fold
 predictions are computed and used to compute out-of-fold Spearman R2 for
 each feature (column).
 """
+
 import sys
 import time
 from abc import ABC, abstractmethod
@@ -39,9 +40,7 @@ logger.addHandler(handler)
 logger = None
 
 
-def compute_spearman_r2(
-        y_true: np.array,
-        y_pred: np.array) -> float:
+def compute_spearman_r2(y_true: np.array, y_pred: np.array) -> float:
     r"""
     Standard Spearman R2 correlation: a number between -1 and 1.
     Note that:
@@ -49,7 +48,7 @@ def compute_spearman_r2(
         - predicted columns that are not almost equal yet ground truth is constant, have Spearman R2 0.0.
         - for all other columns, the usual Spearman R2 is computed
     """
-    assert(len(y_true) == len(y_pred))
+    assert len(y_true) == len(y_pred)
     # Border case 0: there are no true labels or predictions. Return 0.0 (random)
     if len(y_true) == 0:
         return 0.0
@@ -64,7 +63,7 @@ def compute_spearman_r2(
     if np.std(y_true) == 0.0:  # pragma: no cover
         raise ValueError("This should never happen!")
     if np.std(y_pred) == 0.0:
-        assert(np.std(y_true) != 0.0)
+        assert np.std(y_true) != 0.0
         return 0.0
     spearman_r2 = scipy.stats.spearmanr(y_true, y_pred).correlation
     # Even then, sometimes spearman_r2 can return np.nan :( Not sure why
@@ -74,10 +73,7 @@ def compute_spearman_r2(
     return spearman_r2
 
 
-def compute_spearman_r2s(
-        X_true: np.array,
-        X_pred: np.array)\
-        -> np.array:
+def compute_spearman_r2s(X_true: np.array, X_pred: np.array) -> np.array:
     r"""
     Computes Spearman R2 accross all columns.
     Note that:
@@ -85,12 +81,14 @@ def compute_spearman_r2s(
         - predicted columns that are not almost equal yet ground truth is constant, have Spearman R2 0.0.
         - for all other columns, the usual Spearman R2 is computed
     """
+
     def validate_input():
-        assert(X_true.shape == X_pred.shape)
+        assert X_true.shape == X_pred.shape
         true_nan_indices = np.where(np.isnan(X_true))
         pred_nan_indices = np.where(np.isnan(X_pred))
-        assert((true_nan_indices[0] == pred_nan_indices[0]).all())
-        assert((true_nan_indices[1] == pred_nan_indices[1]).all())
+        assert (true_nan_indices[0] == pred_nan_indices[0]).all()
+        assert (true_nan_indices[1] == pred_nan_indices[1]).all()
+
     validate_input()
     nrows, ncols = X_true.shape
     spearman_r2s = np.zeros(shape=(ncols))
@@ -111,11 +109,12 @@ class CVMatrixCompletionModel(MatrixCompletionModel, ABC):
 
 class KFoldCVMatrixCompletionModel(CVMatrixCompletionModel):
     def __init__(
-            self,
-            model: MatrixCompletionModel,
-            n_folds: int = 5,
-            verbose: bool = False,
-            finally_refit_model: Optional[MatrixCompletionModel] = None):
+        self,
+        model: MatrixCompletionModel,
+        n_folds: int = 5,
+        verbose: bool = False,
+        finally_refit_model: Optional[MatrixCompletionModel] = None,
+    ):
         r"""
         :param finally_refit_model: If provided, the model is fit on the full data
             at the very end. This tends to produce a better fit than the
@@ -175,9 +174,8 @@ class DummyCVMatrixCompletionModel(CVMatrixCompletionModel):  # pragma: no cover
     r"""
     The CV Spearman R2 is simply the training Spearman R2! (i.e. far from unbiased!)
     """
-    def __init__(
-            self,
-            model: MatrixCompletionModel):
+
+    def __init__(self, model: MatrixCompletionModel):
         self.model = copy.deepcopy(model)
 
     def fit_matrix(self, X_observed: np.array, Z: Optional[np.array] = None):
@@ -199,11 +197,12 @@ class DummyCVMatrixCompletionModel(CVMatrixCompletionModel):  # pragma: no cover
 
 class TrainValSplitCVMatrixCompletionModel(CVMatrixCompletionModel):
     def __init__(
-            self,
-            model: MatrixCompletionModel,
-            train_ratio: float = 0.8,
-            verbose: bool = False,
-            finally_refit_model: Optional[MatrixCompletionModel] = None):
+        self,
+        model: MatrixCompletionModel,
+        train_ratio: float = 0.8,
+        verbose: bool = False,
+        finally_refit_model: Optional[MatrixCompletionModel] = None,
+    ):
         r"""
         :param train_ratio: What percentage of the data to assign to training
             (the rest is assigned to the validation set).
@@ -226,11 +225,9 @@ class TrainValSplitCVMatrixCompletionModel(CVMatrixCompletionModel):
         is_train = np.zeros(shape=(R, C)) != 0  # I.e. all False
         for c in range(C):
             observed_row_indices = np.where(~np.isnan(X_observed[:, c]))[0]
-            train_indices_for_this_col =\
-                np.random.choice(
-                    observed_row_indices,
-                    int(len(observed_row_indices) * train_ratio),
-                    replace=False)
+            train_indices_for_this_col = np.random.choice(
+                observed_row_indices, int(len(observed_row_indices) * train_ratio), replace=False
+            )
             is_train[train_indices_for_this_col, c] = True
         is_valid = ~is_train
         # Remove all unobserved entries from train and valid.

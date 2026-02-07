@@ -4,7 +4,7 @@ import scipy.stats
 
 
 def wilcoxon_test(x: np.array, y: np.array, return_null_distribution=False):
-    '''
+    """
     Implements Wilcoxon rank sum test vectorized (as in R).
     Note: The 0.5 'continuity correction':
         https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/wilcox.test.R#L320
@@ -20,16 +20,16 @@ def wilcoxon_test(x: np.array, y: np.array, return_null_distribution=False):
     :return sigma: std under null, without correction
     :return sigma_corr: std under null
     R implementation: https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/wilcox.test.R#L309
-    '''
-    assert(len(x) == len(y))
-    assert(all((y == 0) | (y == 1)))
+    """
+    assert len(x) == len(y)
+    assert all((y == 0) | (y == 1))
     n = len(x)
     n1 = y.sum()
     n0 = n - n1
     correctly_ordered_pairs = (y * scipy.stats.rankdata(x)).sum() - n1 * (n1 + 1) / 2.0
     uniques = np.unique(x, return_counts=True)[1]
     correction = (uniques * (uniques * uniques - 1)).sum()
-    assert(n0 + n1 == n)
+    assert n0 + n1 == n
     mu = n0 * n1 / 2
     sigma = np.sqrt(n0 * n1 * (n + 1) / 12.0)
     sigma_corr = np.sqrt(n0 * n1 / 12.0 * (n + 1 - correction / (n * (n - 1.0))))
@@ -41,7 +41,7 @@ def wilcoxon_test(x: np.array, y: np.array, return_null_distribution=False):
 
 def wilcoxon_test_naive(x, y):
     correctly_ordered_pairs = 0
-    assert(len(x) == len(y))
+    assert len(x) == len(y)
     n = len(x)
     for i in range(n):
         for j in range(i + 1, n, 1):
@@ -58,16 +58,15 @@ def wilcoxon_test_naive(x, y):
 
 
 def wilcoxon_score(x, y, correct_z_score=True):
-    '''
+    """
     Returns the wilcoxon rank sum test z score
     :param x: observed values
     :param y: labels
     :param correct_z_score: If True, continuity correction is applied, i.e. 0.5 is added/subtracted from
         the (unnormalized) z score. (prior to division by sigma_corrected) See:
         https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/wilcox.test.R#L320
-    '''
-    correctly_ordered_pairs, mu, sigma, sigma_corrected =\
-        wilcoxon_test(x, y, return_null_distribution=True)
+    """
+    correctly_ordered_pairs, mu, sigma, sigma_corrected = wilcoxon_test(x, y, return_null_distribution=True)
     z_score = (correctly_ordered_pairs - mu) / (sigma_corrected + 1e-16)
     if correct_z_score:
         z_score = z_score - np.sign(z_score) * 0.5 / (sigma_corrected + 1e-16)  # Note that can't overshoot 0.
@@ -87,16 +86,17 @@ def calc_cohens_d(x1, x2) -> float:
 
 
 def get_DE_genes(
-        gene_expression_matrix_df,
-        cell_X_metadata_df,
-        metadata_col,
-        id0,
-        id1,
-        pseudocounts=1e-16,
-        normalize_cell_counts=True,
-        scale_factor=1e6,
-        verbose: bool = False):
-    '''
+    gene_expression_matrix_df,
+    cell_X_metadata_df,
+    metadata_col,
+    id0,
+    id1,
+    pseudocounts=1e-16,
+    normalize_cell_counts=True,
+    scale_factor=1e6,
+    verbose: bool = False,
+):
+    """
     To reproduce VISION tutorial FDR results, set normalize_cell_counts=True, normalization_factor=median counts,
     and pseudocounts=sqrt(n0 * n1) where n0 and n1 are the number of cells in each group. See:
     https://github.com/YosefLab/VISION/blob/master/R/Server.R#L704-L706
@@ -113,12 +113,13 @@ def get_DE_genes(
         change from log(145 / 0.034) ~ 8.5 to log((145 + 100) / (0.03 + 100)) ~ 0.9
     :param normalize_cell_counts: If True, each cell's counts will be normalized to sum to normalization_factor.
     :param scale_factor: Used only if normalize_cell_counts=True.
-    '''
+    """
     if normalize_cell_counts:
         if gene_expression_matrix_df.isna().any().any():
             raise ValueError(f"gene_expression_matrix_df contains NaN's, I don't know how to normalize it!")
-        gene_expression_matrix_df = \
-            scale_factor * gene_expression_matrix_df.div(gene_expression_matrix_df.sum(axis=0), axis='columns')
+        gene_expression_matrix_df = scale_factor * gene_expression_matrix_df.div(
+            gene_expression_matrix_df.sum(axis=0), axis="columns"
+        )
     gene_names = list(gene_expression_matrix_df.index)
     scores = []
     avg_logFCs = []
@@ -126,8 +127,8 @@ def get_DE_genes(
     pct0s = []
     pct1s = []
     idx = cell_X_metadata_df.index  # Need this in case indices don't match! => .loc is your friend!
-    group_0_all_cells = (cell_X_metadata_df.loc[idx, metadata_col] == id0)
-    group_1_all_cells = (cell_X_metadata_df.loc[idx, metadata_col] == id1)
+    group_0_all_cells = cell_X_metadata_df.loc[idx, metadata_col] == id0
+    group_1_all_cells = cell_X_metadata_df.loc[idx, metadata_col] == id1
     group_0_or_1_all_cells = group_0_all_cells | group_1_all_cells
     for i, gene_name in enumerate(gene_names):
         # First subset the correct gene_counts and group indicators:
@@ -142,27 +143,30 @@ def get_DE_genes(
         scores.append(score)
         group_0_counts = gene_counts[group_0]
         group_1_counts = gene_counts[group_1]
-        avg_logFCs.append(np.log((group_0_counts.mean() + pseudocounts) /
-                                 (group_1_counts.mean() + pseudocounts)))
+        avg_logFCs.append(np.log((group_0_counts.mean() + pseudocounts) / (group_1_counts.mean() + pseudocounts)))
         cohen_ds.append(calc_cohens_d(group_0_counts, group_1_counts))
         pct0s.append(np.mean(group_0_counts > 0))
         pct1s.append(np.mean(group_1_counts > 0))
         if verbose and i % 1000 == 0:
             print(f"Processed {i} genes ... ")
-    res_df = pd.DataFrame({'gene_name': gene_names,
-                           'score': scores,
-                           # 'p_val': p_vals, # This is computed at the end 'in parallel' for performance reasons.
-                           'avg_logFC': avg_logFCs,
-                           'cohen_d': cohen_ds,
-                           'pct0': pct0s,
-                           'pct1': pct1s,
-                           # 'p_val_adj': p_vals_adj  # This is computed at the end 'in parallel' for performance.
-                           })
-    res_df['-|score|'] = -np.abs(res_df['score'])
-    res_df['p_val'] = scipy.stats.norm.cdf(-np.abs(res_df['score'])) * 2.0
-    res_df['p_val_adj'] = res_df['p_val'] * len(gene_names)
-    res_df.sort_values(by='p_val_adj', inplace=True)
-    res_df['rank'] = np.arange(1, res_df.shape[0] + 1, 1)
-    res_df = res_df[["rank", "gene_name", "p_val", "avg_logFC", "cohen_d", "pct0",
-                     "pct1", "p_val_adj", "score", "-|score|"]]
+    res_df = pd.DataFrame(
+        {
+            "gene_name": gene_names,
+            "score": scores,
+            # 'p_val': p_vals, # This is computed at the end 'in parallel' for performance reasons.
+            "avg_logFC": avg_logFCs,
+            "cohen_d": cohen_ds,
+            "pct0": pct0s,
+            "pct1": pct1s,
+            # 'p_val_adj': p_vals_adj  # This is computed at the end 'in parallel' for performance.
+        }
+    )
+    res_df["-|score|"] = -np.abs(res_df["score"])
+    res_df["p_val"] = scipy.stats.norm.cdf(-np.abs(res_df["score"])) * 2.0
+    res_df["p_val_adj"] = res_df["p_val"] * len(gene_names)
+    res_df.sort_values(by="p_val_adj", inplace=True)
+    res_df["rank"] = np.arange(1, res_df.shape[0] + 1, 1)
+    res_df = res_df[
+        ["rank", "gene_name", "p_val", "avg_logFC", "cohen_d", "pct0", "pct1", "p_val_adj", "score", "-|score|"]
+    ]
     return res_df

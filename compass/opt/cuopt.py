@@ -4,6 +4,7 @@ import multiprocessing
 
 MULTIPROCESSING_CONFIGURED = False
 
+
 def configure_multiprocessing():
     """
     Sets multiprocessing to use spawn instead of fork.
@@ -17,8 +18,10 @@ def configure_multiprocessing():
         except RuntimeError as e:
             method = multiprocessing.get_start_method(allow_none=True)
             if method != "spawn":
-             # Note for readers: CUDA init will fail if a process is forked.
-             raise Exception(f"Multiprocessing start method was already set to {method}, but CUDA requires spawn") from e
+                # Note for readers: CUDA init will fail if a process is forked.
+                raise Exception(
+                    f"Multiprocessing start method was already set to {method}, but CUDA requires spawn"
+                ) from e
         MULTIPROCESSING_CONFIGURED = True
 
 
@@ -73,6 +76,7 @@ from compass.models.MetabolicModel import MetabolicModel
 from compass.opt.base import LinearProgramDelta, Optimizer, Solution
 
 logger = logging.getLogger("compass")
+
 
 def get_cuopt_config(threads: int | None = None, method: int | None = None) -> dict[str, Any]:
     """
@@ -233,13 +237,15 @@ class CuoptOptimizer(Optimizer):
                 self.variables[rxn_id].setLowerBound(lb)
 
         return Solution(success=success, status=status, obj_value=obj_value)
-    
+
     def solve_problem(self):
         self.problem.solve(self.solver_settings)
         if self.problem.Status.name == "Optimal":
             return
-        
-        logger.info("Received non-optimal status %s. Retrying with automatic method selection", self.problem.Status.name)
+
+        logger.info(
+            "Received non-optimal status %s. Retrying with automatic method selection", self.problem.Status.name
+        )
         original_method = self.solver_settings.get_parameter(CUOPT_METHOD)
 
         # Retry with concurrent method, as that will try all methods
@@ -249,4 +255,3 @@ class CuoptOptimizer(Optimizer):
         finally:
             self.solver_settings.set_parameter(CUOPT_METHOD, original_method)
         return
-        

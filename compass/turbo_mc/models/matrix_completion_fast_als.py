@@ -17,6 +17,7 @@ are not so sparse), nor do we implement the orthogonalization and redistribution
 mean that the original objective is not guaranteed to decrease at each iteration, but is not
 so relevant in practice so we exclude them.
 """
+
 import numpy as np
 
 from compass.turbo_mc.models.matrix_completion_model import MatrixCompletionModel
@@ -24,12 +25,7 @@ from compass.turbo_mc.utils import timeit
 
 
 class MatrixCompletionFastALS(MatrixCompletionModel):
-    def __init__(
-            self,
-            n_factors: int,
-            lam: float,
-            n_epochs: int,
-            verbose: bool):
+    def __init__(self, n_factors: int, lam: float, n_epochs: int, verbose: bool):
         self.n_factors = n_factors
         self.lam = lam
         self.n_epochs = n_epochs
@@ -41,10 +37,7 @@ class MatrixCompletionFastALS(MatrixCompletionModel):
         return res
 
     @timeit("\t\t\tMatrixCompletionFastALS")
-    def _fit_matrix_init(
-            self,
-            X_observed: np.array,
-            Z: None = None) -> None:
+    def _fit_matrix_init(self, X_observed: np.array, Z: None = None) -> None:
         nrows, ncols = X_observed.shape[0], X_observed.shape[1]
         observed_indices = np.where(~np.isnan(X_observed))
         unobserved_indices = np.where(np.isnan(X_observed))
@@ -53,8 +46,13 @@ class MatrixCompletionFastALS(MatrixCompletionModel):
         X_zeroed_out = self._zero_out(X_observed, unobserved_indices)
         # Cache variables
         self.unobserved_indices = unobserved_indices
-        self.X_observed, self.observed_indices, self.A, self.B, self.X_zeroed_out =\
-            X_observed, observed_indices, A, B, X_zeroed_out
+        self.X_observed, self.observed_indices, self.A, self.B, self.X_zeroed_out = (
+            X_observed,
+            observed_indices,
+            A,
+            B,
+            X_zeroed_out,
+        )
         self.epoch = 0
 
     @timeit("\t\t\tMatrixCompletionFastALS")
@@ -62,8 +60,13 @@ class MatrixCompletionFastALS(MatrixCompletionModel):
         if self.verbose:
             print(f"Epoch {self.epoch}")
         # Recover variables
-        observed_indices, A, B, X_zeroed_out, zero_out =\
-            self.observed_indices, self.A, self.B, self.X_zeroed_out, self._zero_out
+        observed_indices, A, B, X_zeroed_out, zero_out = (
+            self.observed_indices,
+            self.A,
+            self.B,
+            self.X_zeroed_out,
+            self._zero_out,
+        )
         # A update
         X_star = X_zeroed_out + zero_out(A @ B.T, observed_indices)
         A = X_star @ B @ np.linalg.inv(B.T @ B + self.lam * np.eye(B.shape[1]))
@@ -83,11 +86,18 @@ class MatrixCompletionFastALS(MatrixCompletionModel):
         1/2 * |P_Omega(X) - P_Omega(AB^T)|_F^2 + lam/2 * |A|_F^2 + lam/2 * |B|_F^2
         :param regularized: If False, only 1/2 * |P_Omega(X) - P_Omega(Z)|_F^2 is returned.
         """
-        X_observed, X_completion, unobserved_indices, A, B, lam, zero_out =\
-            self.X_observed, self.X_completion, self.unobserved_indices, self.A, self.B, self.lam, self._zero_out
-        res = 0.5 * np.linalg.norm(zero_out(X_observed - X_completion, unobserved_indices), 'fro') ** 2
+        X_observed, X_completion, unobserved_indices, A, B, lam, zero_out = (
+            self.X_observed,
+            self.X_completion,
+            self.unobserved_indices,
+            self.A,
+            self.B,
+            self.lam,
+            self._zero_out,
+        )
+        res = 0.5 * np.linalg.norm(zero_out(X_observed - X_completion, unobserved_indices), "fro") ** 2
         if regularized:
-            res += 0.5 * lam * np.linalg.norm(A, 'fro') ** 2 + 0.5 * lam * np.linalg.norm(B, 'fro') ** 2
+            res += 0.5 * lam * np.linalg.norm(A, "fro") ** 2 + 0.5 * lam * np.linalg.norm(B, "fro") ** 2
         return res
 
     def predict(self, r: int, c: int) -> float:

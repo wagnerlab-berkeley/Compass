@@ -1,7 +1,6 @@
 from __future__ import print_function, division, absolute_import
 
-from .MetabolicModel import (MetabolicModel, Reaction, Compartment,
-                     Species, Association, Gene)
+from .MetabolicModel import MetabolicModel, Reaction, Compartment, Species, Association, Gene
 from six import string_types
 from .geneSymbols import resolve_genes
 import libsbml
@@ -9,7 +8,6 @@ import re
 
 
 def load(model_name, sbml_document):
-
     xml_model = sbml_document.model
 
     modelx = MetabolicModel(model_name)
@@ -52,18 +50,15 @@ def reaction_from_xml(xml_node):
     found_ub = False
     found_lb = False
     for param in xml_node.getKineticLaw().getListOfParameters():
-        if param.getId() == 'LOWER_BOUND':
+        if param.getId() == "LOWER_BOUND":
             found_lb = True
             lb = param.getValue()
-        elif param.getId() == 'UPPER_BOUND':
+        elif param.getId() == "UPPER_BOUND":
             found_ub = True
             ub = param.getValue()
 
     if not found_lb or not found_ub:
-        raise Exception(
-            "Error, could not find upper and lower bounds for reaction " +
-            reaction.id
-        )
+        raise Exception("Error, could not find upper and lower bounds for reaction " + reaction.id)
 
     reaction.upper_bound = ub
     reaction.lower_bound = lb
@@ -73,29 +68,22 @@ def reaction_from_xml(xml_node):
     # Reactants
     reaction.reactants = {}
     for sr in xml_node.getListOfReactants():
-
         metabolite = sr.getSpecies()
         coefficient = sr.getStoichiometry()
 
-        reaction.reactants.update({
-            metabolite: coefficient
-        })
+        reaction.reactants.update({metabolite: coefficient})
 
     # Products
     reaction.products = {}
     for sr in xml_node.getListOfProducts():
-
         metabolite = sr.getSpecies()
         coefficient = sr.getStoichiometry()
 
-        reaction.products.update({
-            metabolite: coefficient
-        })
+        reaction.products.update({metabolite: coefficient})
 
     # Gene Associations - find the string in the notes
     # Assumes each reaction has a GENE_ASSOCIATION field in its html notes
-    gene_association_str = GENE_ASSOCIATION_RE.search(
-        xml_node.getNotesString()).group(1).strip()
+    gene_association_str = GENE_ASSOCIATION_RE.search(xml_node.getNotesString()).group(1).strip()
 
     if len(gene_association_str) == 0:
         reaction.gene_associations = None
@@ -106,14 +94,12 @@ def reaction_from_xml(xml_node):
 
 
 def association_from_xml(rule_str):
-
     association = _eval_rule_str(rule_str)
 
     return association
 
 
 def compartment_from_xml(xml_node):
-
     compartment = Compartment()
 
     compartment.id = xml_node.getId()
@@ -123,7 +109,6 @@ def compartment_from_xml(xml_node):
 
 
 def species_from_xml(xml_node):
-
     species = Species()
 
     species.id = xml_node.getId()
@@ -135,7 +120,7 @@ def species_from_xml(xml_node):
 
 
 # Used to evaluate gene association rules
-_TOKEN_RE = re.compile('\(|\)|[^\s\(\)]+')
+_TOKEN_RE = re.compile("\(|\)|[^\s\(\)]+")
 
 # Breakdown of RE
 """
@@ -146,7 +131,6 @@ _TOKEN_RE = re.compile('\(|\)|[^\s\(\)]+')
 
 
 def _eval_rule_str(rule):
-
     # Return None if there is no gene-product rule
     if len(rule) == 0:
         return None
@@ -158,11 +142,11 @@ def _eval_rule_str(rule):
     group_stack = []
     current_group = []
     for term in token_elem:
-        if term == '(':
+        if term == "(":
             # Start a new group
             group_stack.append(current_group)
             current_group = []
-        elif term == ')':
+        elif term == ")":
             # End the group
             prev_group = group_stack.pop()
             prev_group.append(tuple(current_group))
@@ -176,7 +160,6 @@ def _eval_rule_str(rule):
 
 
 def _eval_node(elem):
-
     # resolve each node
     # tuple -> association
     # and or or -> operator
@@ -187,7 +170,6 @@ def _eval_node(elem):
         if isinstance(node, tuple):
             resolved.append(_eval_node(node))
         elif isinstance(node, string_types):
-
             if node == "and" or node == "or":
                 resolved.append(node)  # must be an operator
 
@@ -198,7 +180,7 @@ def _eval_node(elem):
                 gene.name = node.upper()
 
                 assoc = Association()
-                assoc.type = 'gene'
+                assoc.type = "gene"
                 assoc.gene = gene
                 resolved.append(assoc)
 
@@ -215,14 +197,14 @@ def _eval_node(elem):
     assert len(resolved) % 2 == 1
 
     # Look for cases of all | or all & to avoid deep nesting
-    found_or = 'or' in resolved
-    found_and = 'and' in resolved
+    found_or = "or" in resolved
+    found_and = "and" in resolved
 
     if found_or and not found_and:
         nodes = [x for i, x in enumerate(resolved) if i % 2 == 0]
 
         assoc = Association()
-        assoc.type = 'or'
+        assoc.type = "or"
         assoc.children = nodes
         return assoc
 
@@ -230,7 +212,7 @@ def _eval_node(elem):
         nodes = [x for i, x in enumerate(resolved) if i % 2 == 0]
 
         assoc = Association()
-        assoc.type = 'and'
+        assoc.type = "and"
         assoc.children = nodes
         return assoc
 
@@ -239,17 +221,17 @@ def _eval_node(elem):
 
         # Find a middle 'or' to keep trees balanced
         or_indices = [i for i, e in enumerate(resolved) if e == "or"]
-        mid = int(len(or_indices)/2)
+        mid = int(len(or_indices) / 2)
         i = or_indices[mid]
 
         left = tuple(resolved[0:i])
-        right = tuple(resolved[i + 1:])
+        right = tuple(resolved[i + 1 :])
 
         left = _eval_node(left)
         right = _eval_node(right)
 
         assoc = Association()
-        assoc.type = 'or'
+        assoc.type = "or"
         assoc.children = [left, right]
         return assoc
 
