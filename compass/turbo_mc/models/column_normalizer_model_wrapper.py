@@ -11,14 +11,12 @@ class ColumnNormalizerModelWrapper(MatrixCompletionModel):
     r"""
     Normalizes the columns of the matrix before fitting the underlying MatrixCompletionModel.
     """
+
     def __init__(self, model: MatrixCompletionModel):
         self.n_epochs = model.n_epochs
         self.model = model
 
-    def _fit_matrix_init(
-            self,
-            X_observed: np.array,
-            Z: None = None) -> None:
+    def _fit_matrix_init(self, X_observed: np.array, Z: None = None) -> None:
         if utils.TIMEIT:  # For profiling
             print("\t\tColumnNormalizerModelWrapper::_fit_matrix_init ...")  # For profiling
             time_start = time.time()  # For profiling

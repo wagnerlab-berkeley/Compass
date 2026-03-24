@@ -1,6 +1,7 @@
 """
 For working with metabolic models
 """
+
 from __future__ import print_function, division, absolute_import
 import os
 import json
@@ -19,7 +20,7 @@ def min_w_nan(vals):
     Normal python 'min' ignores nan.
     """
     if any([isnan(x) for x in vals]):
-        return float('nan')
+        return float("nan")
     else:
         return min(vals)
 
@@ -39,12 +40,12 @@ def median_nan_zero(vals):
     vals = [0 if isnan(x) else x for x in vals]
     vals = sorted(vals)
     if len(vals) % 2 == 1:
-        middle_i = int((len(vals)-1)/2)
+        middle_i = int((len(vals) - 1) / 2)
         return vals[middle_i]
     else:
-        right_i = int(len(vals)/2)
-        left_i = right_i-1
-        return (vals[left_i] + vals[right_i])/2
+        right_i = int(len(vals) / 2)
+        left_i = right_i - 1
+        return (vals[left_i] + vals[right_i]) / 2
 
 
 def sum_wo_nan(vals):
@@ -62,7 +63,6 @@ def sum_wo_nan(vals):
 
 
 class MetabolicModel(object):
-
     def __init__(self, name, metabolic_model_dir=MODEL_DIR):
         self.name = name
         self.reactions = {}
@@ -70,7 +70,7 @@ class MetabolicModel(object):
         self.compartments = {}
         self.objectives = {}
         self._maximum_flux = None
-        self.media = 'NoMedia'
+        self.media = "NoMedia"
         self.metabolic_model_dir = metabolic_model_dir
         self._SMAT = None
 
@@ -94,9 +94,7 @@ class MetabolicModel(object):
 
         return lower_bounds, upper_bounds
 
-    def getReactionExpression(self, expression,
-                              and_function='min',
-                              or_function=sum_wo_nan):
+    def getReactionExpression(self, expression, and_function="min", or_function=sum_wo_nan):
         # type: (pandas.Series) -> dict
         """
         Evaluates a score for every reaction, using the expression data.
@@ -109,21 +107,19 @@ class MetabolicModel(object):
         """
 
         # resolve the AND function
-        if and_function == 'min':
+        if and_function == "min":
             and_function = min_w_nan
-        elif and_function == 'mean':
+        elif and_function == "mean":
             and_function = mean_nan_zero
-        elif and_function == 'median':
+        elif and_function == "median":
             and_function = median_nan_zero
         else:
-            raise ValueError("Invalid value for and_function: " +
-                             str(and_function))
+            raise ValueError("Invalid value for and_function: " + str(and_function))
 
         score_dict = {}
 
         for r_id, reaction in self.reactions.items():
-            score = reaction.eval_expression(
-                expression, and_function, or_function)
+            score = reaction.eval_expression(expression, and_function, or_function)
 
             score_dict[r_id] = score
 
@@ -143,8 +139,7 @@ class MetabolicModel(object):
         Does not return anything - modifies objects in place
         """
 
-        exchanges = {r_id: r for r_id, r in self.reactions.items()
-                     if r.is_exchange}
+        exchanges = {r_id: r for r_id, r in self.reactions.items() if r.is_exchange}
 
         # Make sure all exchange reactions have reactants but no products
         # Instead of the opposite
@@ -156,8 +151,8 @@ class MetabolicModel(object):
 
             elif len(reaction.products) == 0 and len(reaction.reactants) > 0:
                 # Metabolites created as reactants - limit reverse flux
-                if reaction.lower_bound < -1*limit:
-                    reaction.lower_bound = -1*limit
+                if reaction.lower_bound < -1 * limit:
+                    reaction.lower_bound = -1 * limit
 
             else:
                 raise Exception("Should not occur")
@@ -185,10 +180,8 @@ class MetabolicModel(object):
 
         s_mat = {}
         for reaction_id, rr in self.reactions.items():
-
             # reactants
             for metabolite, coefficient in rr.reactants.items():
-
                 if metabolite not in s_mat:
                     s_mat[metabolite] = []
 
@@ -196,21 +189,19 @@ class MetabolicModel(object):
 
             # products
             for metabolite, coefficient in rr.products.items():
-
                 if metabolite not in s_mat:
                     s_mat[metabolite] = []
 
                 s_mat[metabolite].append((reaction_id, coefficient))
 
         return s_mat
-    
 
     def is_metabolite_used(self, metabolite_id) -> bool:
         """
         Returns whether the metabolite occurs in any reactions in the model
         """
         return metabolite_id in self.SMAT
-    
+
     def associated_reactions(self, metabolite_id) -> list[str]:
         """
         Returns a list of all reactions id's that have this metabolite as a product or reactant
@@ -221,7 +212,7 @@ class MetabolicModel(object):
             return [reaction_id for reaction_id, _ in smat[metabolite_id]]
         else:
             return []
-    
+
     def getSMAT_transposed(self):
         """
         Returns a sparse form of the s-matrix
@@ -236,18 +227,15 @@ class MetabolicModel(object):
 
         s_mat = {}
         for reaction_id, rr in self.reactions.items():
-
             if reaction_id not in s_mat:
                 s_mat[reaction_id] = []
 
             # reactants
             for metabolite, coefficient in rr.reactants.items():
-
                 s_mat[reaction_id].append((metabolite, coefficient * -1))
 
             # products
             for metabolite, coefficient in rr.products.items():
-
                 s_mat[reaction_id].append((metabolite, coefficient))
 
         return s_mat
@@ -260,11 +248,8 @@ class MetabolicModel(object):
         """
         uni_reactions = {}
         for reaction in self.reactions.values():
-
             if reaction.is_pos_unidirectional:  # just ensure suffix and continue
-
-                if (not reaction.id.endswith('_pos')) and \
-                        (not reaction.id.endswith('_neg')):
+                if (not reaction.id.endswith("_pos")) and (not reaction.id.endswith("_neg")):
                     reaction.id = reaction.id + "_pos"
 
                 uni_reactions[reaction.id] = reaction
@@ -331,8 +316,8 @@ class MetabolicModel(object):
         upper-bounds
         """
 
-        media_file = media_name + '.json'
-        media_file = os.path.join(self.metabolic_model_dir, self.name, 'media', media_file)
+        media_file = media_name + ".json"
+        media_file = os.path.join(self.metabolic_model_dir, self.name, "media", media_file)
 
         with open(media_file) as fin:
             media = json.load(fin)
@@ -357,9 +342,7 @@ class MetabolicModel(object):
         """
         max_flux = 0
         for reaction in self.reactions.values():
-            max_flux = max(abs(reaction.lower_bound),
-                           abs(reaction.upper_bound),
-                           max_flux)
+            max_flux = max(abs(reaction.lower_bound), abs(reaction.upper_bound), max_flux)
 
         self._maximum_flux = max_flux
 
@@ -385,13 +368,17 @@ class MetabolicModel(object):
         return out
 
     def to_JSON(self):
-        return json.dumps({
-            'name': self.name,
-            'reactions': self.reactions,
-            'species': self.species,
-            'compartments': self.compartments,
-            'media': self.media
-        }, indent=4, default=_json_default)
+        return json.dumps(
+            {
+                "name": self.name,
+                "reactions": self.reactions,
+                "species": self.species,
+                "compartments": self.compartments,
+                "media": self.media,
+            },
+            indent=4,
+            default=_json_default,
+        )
 
 
 class Reaction(object):
@@ -401,9 +388,7 @@ class Reaction(object):
     # Gene Associations
 
     def __init__(self, from_reaction=None):
-
         if from_reaction is not None:  # Copy constructor
-
             self.id = from_reaction.id
             self.name = from_reaction.name
             self.subsystem = from_reaction.subsystem
@@ -416,12 +401,11 @@ class Reaction(object):
             self.meta = from_reaction.meta
 
         else:  # Placeholders
-
             self.id = ""
             self.name = ""
             self.subsystem = ""
-            self.upper_bound = float('nan')
-            self.lower_bound = float('nan')
+            self.upper_bound = float("nan")
+            self.lower_bound = float("nan")
             self.reactants = {}
             self.products = {}
             self.gene_associations = None
@@ -435,7 +419,7 @@ class Reaction(object):
         """
 
         if self.gene_associations is None:
-            return float('nan')
+            return float("nan")
         else:
             return self.gene_associations.eval_expression(expression, and_function, or_function)
 
@@ -467,7 +451,6 @@ class Reaction(object):
 
     @property
     def is_exchange(self):
-
         if len(self.products) == 0 and len(self.reactants) > 0:
             return True
         elif len(self.reactants) == 0 and len(self.products) > 0:
@@ -477,33 +460,31 @@ class Reaction(object):
 
     @property
     def is_pos_unidirectional(self):
-
-        if (self.upper_bound > 0 and
-                self.lower_bound == 0):
+        if self.upper_bound > 0 and self.lower_bound == 0:
             return True
         else:
             return False
 
     def to_serializable(self):
         out = {
-            'id': self.id,
-            'name': self.name,
-            'subsystem': self.subsystem,
-            'upper_bound': self.upper_bound,
-            'lower_bound': self.lower_bound,
-            'reactants': self.reactants,
-            'products': self.products,
-            'meta': self.meta,
+            "id": self.id,
+            "name": self.name,
+            "subsystem": self.subsystem,
+            "upper_bound": self.upper_bound,
+            "lower_bound": self.lower_bound,
+            "reactants": self.reactants,
+            "products": self.products,
+            "meta": self.meta,
         }
 
         if self.reverse_reaction is not None:
-            out['reverse_reaction'] = self.reverse_reaction.id
+            out["reverse_reaction"] = self.reverse_reaction.id
         else:
-            out['reverse_reaction'] = ''
+            out["reverse_reaction"] = ""
 
         # Gather a list of genes and their alt symbols
         def _get_genes(assoc):
-            if assoc.type == 'gene':
+            if assoc.type == "gene":
                 return [assoc.gene]
             else:
                 result = []
@@ -517,51 +498,45 @@ class Reaction(object):
             for gene in genes:
                 gene_dict[gene.id] = gene
 
-        out['genes'] = gene_dict
+        out["genes"] = gene_dict
 
-        out['gene_associations'] = self.gene_associations
+        out["gene_associations"] = self.gene_associations
 
         return out
 
 
 class Species(object):
-
     def __init__(self):
-            self.id = ""
-            self.name = ""
-            self.compartment = ""
-            self.formula = ""
-            self.meta = {}
+        self.id = ""
+        self.name = ""
+        self.compartment = ""
+        self.formula = ""
+        self.meta = {}
 
     def to_serializable(self):
         return {
-            'id': self.id,
-            'name': self.name,
-            'compartment': self.compartment,
-            'formula': self.formula,
-            'meta': self.meta
+            "id": self.id,
+            "name": self.name,
+            "compartment": self.compartment,
+            "formula": self.formula,
+            "meta": self.meta,
         }
 
 
 class Compartment(object):
-
     def __init__(self, xml_node=None):
-            self.id = ""
-            self.name = ""
+        self.id = ""
+        self.name = ""
 
     def to_serializable(self):
-        return {
-            'id': self.id,
-            'name': self.name
-        }
+        return {"id": self.id, "name": self.name}
 
 
 class Association(object):
-
     def __init__(self):
-            self.type = ''
-            self.gene = None
-            self.children = []
+        self.type = ""
+        self.gene = None
+        self.children = []
 
     def eval_expression(self, expression, and_function, or_function):
         """
@@ -570,24 +545,17 @@ class Association(object):
         Combines 'and' associations with 'min'
         """
 
-        if self.type == 'and':
-            return and_function(
-                    [x.eval_expression(expression, and_function, or_function)
-                     for x in self.children]
-                    )
+        if self.type == "and":
+            return and_function([x.eval_expression(expression, and_function, or_function) for x in self.children])
 
-        elif self.type == 'or':
-            return or_function(
-                    [x.eval_expression(expression, and_function, or_function)
-                     for x in self.children]
-                    )
+        elif self.type == "or":
+            return or_function([x.eval_expression(expression, and_function, or_function) for x in self.children])
 
-        elif self.type == 'gene':
-
+        elif self.type == "gene":
             try:
                 return self.gene.eval_expression(expression)
             except KeyError:
-                return float('nan')
+                return float("nan")
 
         else:
             raise Exception("Unknown Association Type")
@@ -596,7 +564,7 @@ class Association(object):
         """
         Returns all the genes in the association
         """
-        if self.type == 'gene':
+        if self.type == "gene":
             if self.gene.name:
                 return {self.gene.name} | set(self.gene.alt_symbols)
             else:
@@ -614,14 +582,14 @@ class Association(object):
         """
         Removes instances where two isoforms of the same gene are summed/OR'd together
         """
-        if self.type == 'gene':
-            return 
+        if self.type == "gene":
+            return
 
-        elif self.type == 'or' or self.type == 'and':
+        elif self.type == "or" or self.type == "and":
             seen = set()
             children = []
             for child in self.children:
-                if child.type == 'gene':
+                if child.type == "gene":
                     if child.gene.name not in seen or len(child.gene.name) < 1:
                         seen.add(child.gene.name)
                         children.append(child)
@@ -634,23 +602,17 @@ class Association(object):
         return _print_node(self)
 
     def to_serializable(self):
-        if self.type == 'gene':
-            return {
-                'type': self.type,
-                'name': self.gene.name
-            }
+        if self.type == "gene":
+            return {"type": self.type, "name": self.gene.name}
         else:
-            return {
-                'type': self.type,
-                'children': [x.to_serializable() for x in self.children]
-            }
+            return {"type": self.type, "children": [x.to_serializable() for x in self.children]}
+
 
 class Gene(object):
-
     def __init__(self):
-            self.id = ''
-            self.name = ''
-            self.alt_symbols = []
+        self.id = ""
+        self.name = ""
+        self.alt_symbols = []
 
     def eval_expression(self, expression):
         """
@@ -659,8 +621,8 @@ class Gene(object):
         Prefer match by name.  Alternately, match by alt_symbols
         """
 
-        if self.name == '':
-            return float('nan')
+        if self.name == "":
+            return float("nan")
 
         if self.name in expression.index:
             return expression[self.name]
@@ -676,39 +638,29 @@ class Gene(object):
         if found_symbols > 0:
             return agg_expression / found_symbols
 
-        return float('nan')
+        return float("nan")
 
     def to_serializable(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'alt_symbols': self.alt_symbols
-        }
+        return {"id": self.id, "name": self.name, "alt_symbols": self.alt_symbols}
 
 
 def _print_node(node, expression=None, indent=0):
     lines = []
     if expression is None:
-        lines.append(" "*indent + node.type)
+        lines.append(" " * indent + node.type)
     else:
-        lines.append(" ".join([
-            " "*indent + node.type,
-            node.eval_expression(expression, min_w_nan, sum_wo_nan)
-        ]))
+        lines.append(" ".join([" " * indent + node.type, node.eval_expression(expression, min_w_nan, sum_wo_nan)]))
 
     if len(node.children) > 0:
         for x in node.children:
-            lines.append(_print_node(x, expression, indent+4))
-    if node.type == 'gene':
-        lines.append(" ".join([
-            " "*indent, node.gene.id,
-            node.gene.name, str(node.gene.alt_symbols)]))
+            lines.append(_print_node(x, expression, indent + 4))
+    if node.type == "gene":
+        lines.append(" ".join([" " * indent, node.gene.id, node.gene.name, str(node.gene.alt_symbols)]))
 
     return "\n".join(lines)
 
 
 def _json_default(o):
-
     try:
         return o.to_serializable()
     except AttributeError:

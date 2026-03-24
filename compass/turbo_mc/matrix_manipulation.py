@@ -70,11 +70,8 @@ def get_constant_columns(X: np.array) -> np.array:
 
 
 def get_list_of_random_matrix_indices_fast(
-        nrows: int,
-        ncols: int,
-        sampling_density: float = 0.1,
-        verbose: bool = False) \
-        -> List[Tuple[int, int]]:
+    nrows: int, ncols: int, sampling_density: float = 0.1, verbose: bool = False
+) -> List[Tuple[int, int]]:
     r"""
     Return a random set of indices indexing a matrix of size nrows X ncols.
     Each matrix entry is chosen with probability 'sampling_density'.
@@ -91,12 +88,12 @@ def get_list_of_random_matrix_indices_fast(
 
 
 def get_list_of_random_matrix_indices(
-        nrows: int,
-        ncols: int,
-        sampling_density: float = 0.1,
-        verbose: bool = False,
-        randomize_rows_and_columns: bool = False) \
-        -> List[Tuple[int, int]]:
+    nrows: int,
+    ncols: int,
+    sampling_density: float = 0.1,
+    verbose: bool = False,
+    randomize_rows_and_columns: bool = False,
+) -> List[Tuple[int, int]]:
     r"""
     TODO: cythonize.
     Return a random set of indices indexing a matrix of size nrows X ncols.
@@ -134,12 +131,14 @@ def get_list_of_random_matrix_indices(
             key += 1
         res += list(entries_for_this_column)
     # Check that there are no repetitions
-    assert(len(res) == len(set(res)))
+    assert len(res) == len(set(res))
     # Check that all columns are equally represented
-    assert((max(hits_per_col) - min(hits_per_col)) == 0)
+    assert (max(hits_per_col) - min(hits_per_col)) == 0
     if verbose:
-        print(f"max sampling dicrepancy between rows:\
-              {(max(hits_per_row) - min(hits_per_row)) / (min(hits_per_row) + 1e-8)}")
+        print(
+            f"max sampling dicrepancy between rows:\
+              {(max(hits_per_row) - min(hits_per_row)) / (min(hits_per_row) + 1e-8)}"
+        )
     if randomize_rows_and_columns:
         row_mapping = np.random.choice(range(nrows), nrows, False)
         col_mapping = np.random.choice(range(ncols), ncols, False)
@@ -148,10 +147,8 @@ def get_list_of_random_matrix_indices(
 
 
 def observe_entries_and_hide_rest(
-        X: np.array,
-        matrix_indices: List[Tuple[int, int]],
-        verbose: bool = False)\
-        -> np.array:
+    X: np.array, matrix_indices: List[Tuple[int, int]], verbose: bool = False
+) -> np.array:
     r"""
     Given a matrix X, and a list of indices, returns a matrix with
     matrix_indices observed. Everything else is np.nan
@@ -166,11 +163,7 @@ def observe_entries_and_hide_rest(
     return X_observed
 
 
-def observe_entries(
-        X: np.array,
-        matrix_indices: List[Tuple[int, int]],
-        verbose: bool = False)\
-        -> pd.DataFrame:
+def observe_entries(X: np.array, matrix_indices: List[Tuple[int, int]], verbose: bool = False) -> pd.DataFrame:
     r"""
     Given a matrix X, and a list of indices, returns a DataFrame with
     those (row, col, val) tuples
@@ -180,21 +173,16 @@ def observe_entries(
     """
     if verbose:
         print("In observe_entries ... ")  # pragma: no cover
-    assert(len(X.shape) == 2)
+    assert len(X.shape) == 2
     rows, cols = zip(*matrix_indices)
     vals = X[rows, cols]
-    observations = \
-        pd.DataFrame({'row': rows,
-                      'col': cols,
-                      'val': vals})
+    observations = pd.DataFrame({"row": rows, "col": cols, "val": vals})
     if verbose:
         print("Out observe_entries")  # pragma: no cover
     return observations
 
 
-def observation_list_to_df(
-        observations_list: List[Tuple[int, int, float]])\
-        -> pd.DataFrame:
+def observation_list_to_df(observations_list: List[Tuple[int, int, float]]) -> pd.DataFrame:
     r"""
     Convert list of (row, col, val) tuples to a DataFrame.
     Observations are sorted by column first, then row.
@@ -202,20 +190,19 @@ def observation_list_to_df(
     :return res: pd.DataFrame of triples (row, col, val)
     """
     # Check that observations are all distinct
-    assert(len(set([(r, c) for (r, c, _) in observations_list]))
-           == len(observations_list))
-    observations = \
-        pd.DataFrame({'row': [r for r, _, _ in observations_list],
-                      'col': [c for _, c, _ in observations_list],
-                      'val': [v for _, _, v in observations_list]})
-    observations.sort_values(by=['col', 'row'], inplace=True, ignore_index=True)
+    assert len(set([(r, c) for (r, c, _) in observations_list])) == len(observations_list)
+    observations = pd.DataFrame(
+        {
+            "row": [r for r, _, _ in observations_list],
+            "col": [c for _, c, _ in observations_list],
+            "val": [v for _, _, v in observations_list],
+        }
+    )
+    observations.sort_values(by=["col", "row"], inplace=True, ignore_index=True)
     return observations
 
 
-def matrix_from_observations(
-        observations: pd.DataFrame,
-        nrows: int,
-        ncols: int) -> np.array:
+def matrix_from_observations(observations: pd.DataFrame, nrows: int, ncols: int) -> np.array:
     r"""
     Given a set of observations, return the matrix. pd.nan is used for unobserved entries.
     The number of rows and columns of the resulting matrix is required. Although
@@ -229,12 +216,11 @@ def matrix_from_observations(
     """
     res = np.zeros(shape=(nrows, ncols))
     res[:, :] = np.nan
-    res[observations['row'], observations['col']] = observations['val']
+    res[observations["row"], observations["col"]] = observations["val"]
     return res
 
 
-def get_observations_from_partially_observed_matrix(X: np.array)\
-        -> List[Tuple[int, int, float]]:
+def get_observations_from_partially_observed_matrix(X: np.array) -> List[Tuple[int, int, float]]:
     observed_indices = np.where(~np.isnan(X))
     rows = list(observed_indices[0])
     cols = list(observed_indices[1])
@@ -243,10 +229,10 @@ def get_observations_from_partially_observed_matrix(X: np.array)\
 
 
 def complete_matrix(
-        X_observed: np.array,
-        model,  # MatrixCompletionModel; not typing it to avoid circular import...
-        verbose: bool = False)\
-        -> None:
+    X_observed: np.array,
+    model,  # MatrixCompletionModel; not typing it to avoid circular import...
+    verbose: bool = False,
+) -> None:
     r"""
     TODO: This is super slow... slower than training the model!
     Given a partially observed matrix X_observed and a MatrixCompletionModel,

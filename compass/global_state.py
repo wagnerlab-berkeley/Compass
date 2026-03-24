@@ -3,6 +3,7 @@ This module contains global state. It is used for e.g. determining whether
 to skip the computation of a reaction for a cell when --selected-reactions-for-each-cell
 is provided.
 """
+
 import os
 from typing import Optional
 
@@ -13,7 +14,7 @@ _current_reaction_id = ""
 _selected_reactions_for_each_cell = None
 
 
-class _SelectedReactionsForEachCell():
+class _SelectedReactionsForEachCell:
     def __init__(self, path: Optional[str]):
         r"""
         :param path: Path to file containing the reactions for each cell.
@@ -34,7 +35,7 @@ class _SelectedReactionsForEachCell():
             with open(path) as f:
                 for line in f:
                     # Must be careful to remove newlines from end of file.
-                    tokens = [token.rstrip("\n") for token in line.split(',')]
+                    tokens = [token.rstrip("\n") for token in line.split(",")]
                     cell_name, reactions_for_this_cell = tokens[0], tokens[1:]
                     reactions_for_cells[cell_name] = reactions_for_this_cell
         self.reactions_for_cells = reactions_for_cells
@@ -80,5 +81,7 @@ def get_current_reaction_id() -> str:
 
 def current_reaction_is_selected_for_current_cell() -> bool:
     if _selected_reactions_for_each_cell is None:
-        raise Exception("_selected_reactions_for_each_cell is None - this indicates a bug due to multiprocessing interaction with globals (which varies across python version and OS)")
+        raise Exception(
+            "_selected_reactions_for_each_cell is None - this indicates a bug due to multiprocessing interaction with globals (which varies across python version and OS)"
+        )
     return _selected_reactions_for_each_cell.is_selected(_current_cell_name, _current_reaction_id)

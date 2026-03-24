@@ -7,21 +7,20 @@ Additionally, the predict_all method should be overriden when possible with a
 faster implementation, since the default 'predict_all' implementation just loops
 over all matrix entries and calls 'predict'.
 """
+
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 from typing import Optional
 
-from compass.turbo_mc.matrix_manipulation import matrix_from_observations, get_observations_from_partially_observed_matrix
+from compass.turbo_mc.matrix_manipulation import (
+    matrix_from_observations,
+    get_observations_from_partially_observed_matrix,
+)
 
 
 class MatrixCompletionModel(ABC):
-    def fit(
-            self,
-            observations: pd.DataFrame,
-            nrows: int,
-            ncols: int,
-            Z: Optional[np.array] = None) -> None:
+    def fit(self, observations: pd.DataFrame, nrows: int, ncols: int, Z: Optional[np.array] = None) -> None:
         r"""
         Fits the model to the observed data, given optional additional row features Z.
         (Z conveying 'latent space')
@@ -45,19 +44,11 @@ class MatrixCompletionModel(ABC):
         for epoch in range(self.n_epochs):
             self._step()
 
-    def _fit_init(
-            self,
-            observations: pd.DataFrame,
-            nrows: int,
-            ncols: int,
-            Z: Optional[np.array] = None) -> None:
+    def _fit_init(self, observations: pd.DataFrame, nrows: int, ncols: int, Z: Optional[np.array] = None) -> None:
         X_observed = matrix_from_observations(observations, nrows=nrows, ncols=ncols)
         self._fit_matrix_init(X_observed, Z)
 
-    def _fit_matrix_init(
-            self,
-            X_observed: np.array,
-            Z: None = None) -> None:
+    def _fit_matrix_init(self, X_observed: np.array, Z: None = None) -> None:
         observations = get_observations_from_partially_observed_matrix(X_observed)
         self._fit_init(observations, X_observed.shape[0], X_observed.shape[1], Z)
 

@@ -17,6 +17,7 @@ import gurobipy as gp
 
 MULTIPROCESSING_CONFIGURED = False
 
+
 def create_process_pool(args):
     """
     Creates multiprocessing pool for compass
@@ -24,11 +25,12 @@ def create_process_pool(args):
     """
     if args["optimizer"] == "cuopt":
         from .opt.cuopt import configure_multiprocessing
+
         configure_multiprocessing()
-    return multiprocessing.Pool(args['num_processes'])
+    return multiprocessing.Pool(args["num_processes"])
+
 
 def get_steadystate_constraints(model, gp_model):
-
     """
     Uses the s_mat to define connectivity constraints
     """
@@ -66,41 +68,45 @@ def reset_objective(gp_model):
 
     gp_model.setObjective(0)
     gp_model.update()
-    
+
+
 def read_data(data):
     if len(data) == 1:
         ext = os.path.splitext(data[0])[-1]
-        if ext == '.h5ad':
+        if ext == ".h5ad":
             return anndata.read_h5ad(data[0]).to_df().T
         else:
-            return pd.read_csv(data[0], sep='\t', index_col=0)
+            return pd.read_csv(data[0], sep="\t", index_col=0)
     else:
         return read_mtx(data[0], data[1], data[2])
+
 
 def read_annotations(data):
     if len(data) == 1:
         ext = os.path.splitext(data[0])[-1]
-        if ext == '.h5ad':
-            res = anndata.read_h5ad(data[0])[:,:0].copy() #Slice to remove all gene observations
+        if ext == ".h5ad":
+            res = anndata.read_h5ad(data[0])[:, :0].copy()  # Slice to remove all gene observations
             return res
         else:
             return None
     elif len(data) == 3:
         return None
 
-def write_output(output, path, args):
-    if args['anndata_output']:
-        #TODO: Add more control over output format
-        
-        #Output will be indexed by "sample_%d".format(index) unless reading in slow names
-        #output.var = args['anndata_annotations'].obs
 
-        #Generally only observational annotations are relevant after Compass algorithm
-        annot = args['anndata_annotations']
+def write_output(output, path, args):
+    if args["anndata_output"]:
+        # TODO: Add more control over output format
+
+        # Output will be indexed by "sample_%d".format(index) unless reading in slow names
+        # output.var = args['anndata_annotations'].obs
+
+        # Generally only observational annotations are relevant after Compass algorithm
+        annot = args["anndata_annotations"]
         res = anndata.AnnData(X=output.T, obs=annot.obs, uns=annot.uns, obsm=annot.obsm, obsp=annot.obsp)
-        res.write(path+'.h5ad', compression='gzip') 
+        res.write(path + ".h5ad", compression="gzip")
     else:
-        output.to_csv(path+".tsv", sep="\t")
+        output.to_csv(path + ".tsv", sep="\t")
+
 
 def read_sample_names(data, slow_names=True):
     """
@@ -110,40 +116,43 @@ def read_sample_names(data, slow_names=True):
     """
     if len(data) == 1:
         ext = os.path.splitext(data[0])[-1]
-        if ext == '.h5ad':
+        if ext == ".h5ad":
             if slow_names:
                 return anndata.read_h5ad(data[0]).obs.index
         else:
-            return pd.read_csv(data[0], sep='\t', index_col=0, nrows=1).columns
+            return pd.read_csv(data[0], sep="\t", index_col=0, nrows=1).columns
     elif len(data) >= 3 and data[2] is not None:
-        return pd.read_csv(data[2], sep='\t', header=None).to_numpy().ravel()
-    #Sample names not provided or not efficient to read
+        return pd.read_csv(data[2], sep="\t", header=None).to_numpy().ravel()
+    # Sample names not provided or not efficient to read
     return None
 
+
 def indexed_sample_names(n):
-    return ['sample_'+str(i) for i in range(n)]
+    return ["sample_" + str(i) for i in range(n)]
+
 
 def read_mtx(mtx_file, rows_file, columns_file=None):
     """
-        Reads an mtx file into a pandas dataframe for doing Compass stuff with. Primarily for reading gene expression files.
+    Reads an mtx file into a pandas dataframe for doing Compass stuff with. Primarily for reading gene expression files.
     """
     mtx = scipy.io.mmread(mtx_file)
-    rows = pd.read_csv(rows_file, sep='\t', header=None)
+    rows = pd.read_csv(rows_file, sep="\t", header=None)
     if columns_file is not None:
-        columns = pd.read_csv(columns_file, sep='\t', header=None).to_numpy().ravel()
+        columns = pd.read_csv(columns_file, sep="\t", header=None).to_numpy().ravel()
     else:
         columns = indexed_sample_names(mtx.shape[1])
-    if pd.__version__ >= '1':
-        return pd.DataFrame.sparse.from_spmatrix(mtx, index=rows.to_numpy().ravel(), columns = columns)
+    if pd.__version__ >= "1":
+        return pd.DataFrame.sparse.from_spmatrix(mtx, index=rows.to_numpy().ravel(), columns=columns)
     else:
-        return pd.SparseDataFrame(mtx, index=rows.to_numpy().ravel(), columns = columns)
+        return pd.SparseDataFrame(mtx, index=rows.to_numpy().ravel(), columns=columns)
+
 
 def read_knn(knn_data, data=None, dist=False):
     """
-        Parses a knn input format from sklearn's nearest neighbors format (possibly wrapped in a Pandas dataframe)
-        Returns None if the result does not match
+    Parses a knn input format from sklearn's nearest neighbors format (possibly wrapped in a Pandas dataframe)
+    Returns None if the result does not match
     """
-    if (knn_data.endswith("npy")):
+    if knn_data.endswith("npy"):
         knn = np.load(knn_data)
         if knn.shape[0] == data.shape[1]:
             return knn
@@ -154,50 +163,55 @@ def read_knn(knn_data, data=None, dist=False):
         # first column is the sample names of the k nearest neighbors
         # following k columns are indices of the k nearest neighbors
         # data is of shape (# of genes, # of cells)
-        knn = pd.read_csv(knn_data, sep='\t', index_col=0)
+        knn = pd.read_csv(knn_data, sep="\t", index_col=0)
         if data is None:
-            return knn.values #No choice but to assume that the indices are the same as input data
+            return knn.values  # No choice but to assume that the indices are the same as input data
         elif len(knn.index) != len(data.columns):
             return None
         elif np.all(knn.index == data.columns):
-            return knn.values 
+            return knn.values
         elif np.all(np.sort(knn.index) == np.sort(data.columns)):
             if dist:
                 return knn.loc[data.columns].values
             else:
-                #Need this only for the array of indices (because they may be permuted)
+                # Need this only for the array of indices (because they may be permuted)
                 LUT = {}
                 for i in range(data.shape[1]):
                     LUT[i] = data.columns.get_loc(knn.index[i])
-                return knn.applymap(lambda x: LUT[x]).loc[data.columns].values 
+                return knn.applymap(lambda x: LUT[x]).loc[data.columns].values
         else:
             return None
+
 
 def read_knn_ind(knn_data, data=None):
     return read_knn(knn_data, data, dist=False)
 
+
 def read_knn_dist(knn_data, data=None):
     return read_knn(knn_data, data, dist=True)
 
+
 def read_metadata(model_name):
     top_dir = os.path.join(MODEL_DIR, model_name)
-    metadata_dir = os.path.join(top_dir, 'metadata')
-    reaction_metadata_path = os.path.join(metadata_dir, 'reaction_metadata.csv')
+    metadata_dir = os.path.join(top_dir, "metadata")
+    reaction_metadata_path = os.path.join(metadata_dir, "reaction_metadata.csv")
 
     return pd.read_csv(reaction_metadata_path, index_col=0)
 
+
 def get_gurobi_credentials():
-    return parse_gurobi_license_file(os.path.join(LICENSE_DIR, 'gurobi.lic'))
+    return parse_gurobi_license_file(os.path.join(LICENSE_DIR, "gurobi.lic"))
+
 
 def parse_gurobi_license_file(file_path):
     credentials = {}
 
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         for line in file:
             line = line.strip()
 
-            if '=' in line:
-                key, val = line.split('=')
+            if "=" in line:
+                key, val = line.split("=")
                 try:
                     val = int(val)
                 except:

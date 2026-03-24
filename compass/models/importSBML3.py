@@ -1,7 +1,6 @@
 from __future__ import print_function, division, absolute_import
 
-from .MetabolicModel import (MetabolicModel, Reaction, Compartment,
-                     Species, Association, Gene)
+from .MetabolicModel import MetabolicModel, Reaction, Compartment, Species, Association, Gene
 from ..globals import MODEL_DIR
 
 from six import string_types
@@ -9,7 +8,6 @@ import libsbml
 
 
 def load(model_name, sbml_document, metabolic_model_dir=MODEL_DIR):
-
     xml_model = sbml_document.model
 
     # Load Model Parameters
@@ -56,7 +54,7 @@ def reaction_from_xml(xml_node, xml_params):
 
     # Lower and upper bounds
 
-    fbcrr = xml_node.getPlugin('fbc')
+    fbcrr = xml_node.getPlugin("fbc")
     ub = fbcrr.getUpperFluxBound()
     if isinstance(ub, string_types):
         ub = xml_params[ub]
@@ -73,24 +71,18 @@ def reaction_from_xml(xml_node, xml_params):
     # Reactants
     reaction.reactants = {}
     for sr in xml_node.getListOfReactants():
-
         metabolite = sr.getSpecies()
         coefficient = sr.getStoichiometry()
 
-        reaction.reactants.update({
-            metabolite: coefficient
-        })
+        reaction.reactants.update({metabolite: coefficient})
 
     # Products
     reaction.products = {}
     for sr in xml_node.getListOfProducts():
-
         metabolite = sr.getSpecies()
         coefficient = sr.getStoichiometry()
 
-        reaction.products.update({
-            metabolite: coefficient
-        })
+        reaction.products.update({metabolite: coefficient})
 
     # Gene Associations
     gpa = fbcrr.getGeneProductAssociation()
@@ -104,32 +96,25 @@ def reaction_from_xml(xml_node, xml_params):
 
 
 def association_from_xml(xml_node):
-
     association = Association()
 
     if isinstance(xml_node, libsbml.FbcOr):
-        association.type = 'or'
+        association.type = "or"
         association.gene = None
-        association.children = [
-            association_from_xml(xml_node=x)
-            for x in xml_node.getListOfAssociations()
-        ]
+        association.children = [association_from_xml(xml_node=x) for x in xml_node.getListOfAssociations()]
 
     elif isinstance(xml_node, libsbml.FbcAnd):
-        association.type = 'and'
+        association.type = "and"
         association.gene = None
-        association.children = [
-            association_from_xml(xml_node=x)
-            for x in xml_node.getListOfAssociations()
-        ]
+        association.children = [association_from_xml(xml_node=x) for x in xml_node.getListOfAssociations()]
 
     elif isinstance(xml_node, libsbml.GeneProductRef):
-        association.type = 'gene'
+        association.type = "gene"
         association.children = []
 
         gp_str = xml_node.getGeneProduct()
 
-        fbmodel = xml_node.getSBMLDocument().model.getPlugin('fbc')
+        fbmodel = xml_node.getSBMLDocument().model.getPlugin("fbc")
         gp = fbmodel.getGeneProduct(gp_str)
 
         association.gene = gene_from_xml(xml_node=gp)
@@ -141,7 +126,6 @@ def association_from_xml(xml_node):
 
 
 def gene_from_xml(xml_node):
-
     gene = Gene()
 
     gene.id = xml_node.getId()
@@ -154,21 +138,18 @@ def gene_from_xml(xml_node):
 
 
 def species_from_xml(xml_node):
-
     species = Species()
 
     species.id = xml_node.getId()
     species.name = xml_node.getName()
     species.compartment = xml_node.getCompartment()
-    species.formula = xml_node.getPlugin('fbc') \
-        .getChemicalFormula()
+    species.formula = xml_node.getPlugin("fbc").getChemicalFormula()
     species.meta = {}
 
     return species
 
 
 def compartment_from_xml(xml_node):
-
     compartment = Compartment()
 
     compartment.id = xml_node.getId()

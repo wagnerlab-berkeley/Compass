@@ -1,8 +1,10 @@
 r"""
 The basic API of a metric is (X, X_observed, X_pred, exclude_observed)
 """
+
 import numpy as np
 import scipy.stats
+
 # import scipy.stats  # I could compute r2 with scipy.stats.linregress but rather do it by hand.
 from scipy.sparse.linalg import svds
 from typing import Optional
@@ -10,11 +12,7 @@ from typing import Optional
 from .matrix_manipulation import standardize, are_equal, is_constant
 
 
-def compute_r2(
-        y_true: np.array,
-        y_observed: np.array,
-        y_pred: np.array,
-        exclude_observed: bool = True) -> float:
+def compute_r2(y_true: np.array, y_observed: np.array, y_pred: np.array, exclude_observed: bool = True) -> float:
     r"""
     The R2 is computed a 1.0 - ss_res / (ss_tot + 1e-16) where ss_res is the residual sum of
     squares, and ss_tot is the sum of squares of the baseline model np.nanmean(y_observed).
@@ -26,8 +24,9 @@ def compute_r2(
     """
     baseline_mean = np.nanmean(y_observed)
     # _, _, r2, _, _ = scipy.stats.linregress(y_true, y_pred)
-    indices_to_use = np.where(np.isnan(y_observed)) if exclude_observed else\
-        np.where(~np.isnan(y_true))  # Hacky way to get all indices...
+    indices_to_use = (
+        np.where(np.isnan(y_observed)) if exclude_observed else np.where(~np.isnan(y_true))
+    )  # Hacky way to get all indices...
     # Border case 0: all the column entries are observed so there are no errors.
     if len(indices_to_use[0]) == 0:
         return 1.0
@@ -46,12 +45,8 @@ def compute_r2(
 
 
 def compute_r2s(
-        X: np.array,
-        X_observed: np.array,
-        X_completion: np.array,
-        exclude_observed: bool = True,
-        verbose: bool = False)\
-        -> np.array:
+    X: np.array, X_observed: np.array, X_completion: np.array, exclude_observed: bool = True, verbose: bool = False
+) -> np.array:
     r"""
     Computes r2 accross all columns, only on UN-observed entries. Truncated below by -1.0.
     The only reason I care about considering observed entries for MSE is the Theory behind it.
@@ -59,8 +54,8 @@ def compute_r2s(
     """
     if verbose:
         print(f"In compute_r2s ... ")  # pragma: no cover
-    assert(X.shape == X_observed.shape)
-    assert(X.shape == X_completion.shape)
+    assert X.shape == X_observed.shape
+    assert X.shape == X_completion.shape
     nrows, ncols = X.shape
     r2s = np.zeros(shape=(ncols))
     for c in range(ncols):
@@ -75,10 +70,8 @@ def compute_r2s(
 
 
 def compute_pearson_r2(
-        y_true: np.array,
-        y_observed: np.array,
-        y_pred: np.array,
-        exclude_observed: bool = True) -> float:
+    y_true: np.array, y_observed: np.array, y_pred: np.array, exclude_observed: bool = True
+) -> float:
     r"""
     Standard Pearson R2 correlation: a number between -1 and 1.
     Note that:
@@ -86,8 +79,9 @@ def compute_pearson_r2(
         - predicted columns that are not almost equal yet ground truth is constant, have Pearson R2 0.0.
         - for all other columns, the usual Pearson R2 is computed
     """
-    indices_to_use = np.where(np.isnan(y_observed)) if exclude_observed else\
-        np.where(~np.isnan(y_true))  # Hacky way to get all indices...
+    indices_to_use = (
+        np.where(np.isnan(y_observed)) if exclude_observed else np.where(~np.isnan(y_true))
+    )  # Hacky way to get all indices...
     # Border case 0: all the column entries are observed so there are no errors.
     if len(indices_to_use[0]) == 0:
         return 1.0
@@ -114,11 +108,8 @@ def compute_pearson_r2(
 
 
 def compute_pearson_r2s(
-        X: np.array,
-        X_observed: np.array,
-        X_completion: np.array,
-        exclude_observed: bool = True)\
-        -> np.array:
+    X: np.array, X_observed: np.array, X_completion: np.array, exclude_observed: bool = True
+) -> np.array:
     r"""
     Computes Pearson R2 accross all columns.
     Note that:
@@ -126,8 +117,8 @@ def compute_pearson_r2s(
         - predicted columns that are not almost equal yet ground truth is constant, have Pearson R2 0.0.
         - for all other columns, the usual Pearson R2 is computed
     """
-    assert(X.shape == X_observed.shape)
-    assert(X.shape == X_completion.shape)
+    assert X.shape == X_observed.shape
+    assert X.shape == X_completion.shape
     nrows, ncols = X.shape
     pearson_r2s = np.zeros(shape=(ncols))
     for c in range(ncols):
@@ -140,10 +131,8 @@ def compute_pearson_r2s(
 
 
 def compute_spearman_r2(
-        y_true: np.array,
-        y_observed: np.array,
-        y_pred: np.array,
-        exclude_observed: bool = True) -> float:
+    y_true: np.array, y_observed: np.array, y_pred: np.array, exclude_observed: bool = True
+) -> float:
     r"""
     Standard Spearman R2 correlation: a number between -1 and 1.
     Note that:
@@ -151,8 +140,9 @@ def compute_spearman_r2(
         - predicted columns that are not almost equal yet ground truth is constant, have Spearman R2 0.0.
         - for all other columns, the usual Spearman R2 is computed
     """
-    indices_to_use = np.where(np.isnan(y_observed)) if exclude_observed else\
-        np.where(~np.isnan(y_true))  # Hacky way to get all indices...
+    indices_to_use = (
+        np.where(np.isnan(y_observed)) if exclude_observed else np.where(~np.isnan(y_true))
+    )  # Hacky way to get all indices...
     y_true_sub = y_true[indices_to_use]
     y_pred_sub = y_pred[indices_to_use]
     # Border case 0: all the column entries are observed so there are no errors.
@@ -181,11 +171,8 @@ def compute_spearman_r2(
 
 
 def compute_spearman_r2s(
-        X: np.array,
-        X_observed: np.array,
-        X_completion: np.array,
-        exclude_observed: bool = True)\
-        -> np.array:
+    X: np.array, X_observed: np.array, X_completion: np.array, exclude_observed: bool = True
+) -> np.array:
     r"""
     Computes Spearman R2 accross all columns.
     Note that:
@@ -193,8 +180,8 @@ def compute_spearman_r2s(
         - predicted columns that are not almost equal yet ground truth is constant, have Spearman R2 0.0.
         - for all other columns, the usual Spearman R2 is computed
     """
-    assert(X.shape == X_observed.shape)
-    assert(X.shape == X_completion.shape)
+    assert X.shape == X_observed.shape
+    assert X.shape == X_completion.shape
     nrows, ncols = X.shape
     spearman_r2s = np.zeros(shape=(ncols))
     for c in range(ncols):
@@ -207,12 +194,13 @@ def compute_spearman_r2s(
 
 
 def compute_mse(
-        y_true: np.array,
-        y_observed: np.array,
-        y_pred: np.array,
-        give_each_column_equal_weight: bool = False,
-        exclude_observed: bool = True,
-        return_sum_instead_of_mean: bool = False) -> float:
+    y_true: np.array,
+    y_observed: np.array,
+    y_pred: np.array,
+    give_each_column_equal_weight: bool = False,
+    exclude_observed: bool = True,
+    return_sum_instead_of_mean: bool = False,
+) -> float:
     r"""
     Given true values, observed values, and predicted values, compute the MSE.
     :param give_each_column_equal_weight: If True:
@@ -225,8 +213,9 @@ def compute_mse(
     :param return_sum_instead_of_mean: If True, will return sum of errors instead of the mean.
     """
     res = 0.0
-    indices_to_use = np.where(np.isnan(y_observed)) if exclude_observed\
-        else np.where(~np.isnan(y_true))  # hacky way to say "all indices"...
+    indices_to_use = (
+        np.where(np.isnan(y_observed)) if exclude_observed else np.where(~np.isnan(y_true))
+    )  # hacky way to say "all indices"...
     # Border case 0: all the column are observed so there are no errors.
     if len(indices_to_use[0]) == 0:
         return 0.0
@@ -246,14 +235,14 @@ def compute_mse(
 
 
 def compute_mse_per_column(
-        X: np.array,
-        X_observed: np.array,
-        X_completion: np.array,
-        exclude_observed: bool = True,
-        give_each_column_equal_weight: bool = False,
-        verbose: bool = False,
-        return_sum_instead_of_mean: bool = False)\
-        -> np.array:
+    X: np.array,
+    X_observed: np.array,
+    X_completion: np.array,
+    exclude_observed: bool = True,
+    give_each_column_equal_weight: bool = False,
+    verbose: bool = False,
+    return_sum_instead_of_mean: bool = False,
+) -> np.array:
     r"""
     Main method for computing MSEs in various forms (e.g. variance explained,
     variance explained excluding observed)
@@ -274,22 +263,14 @@ def compute_mse_per_column(
         y_observed = X_observed[:, c]
         y_pred = X_completion[:, c]
         res[c] = compute_mse(
-            y_true,
-            y_observed,
-            y_pred,
-            give_each_column_equal_weight,
-            exclude_observed,
-            return_sum_instead_of_mean)
+            y_true, y_observed, y_pred, give_each_column_equal_weight, exclude_observed, return_sum_instead_of_mean
+        )
     return res
 
 
 def compute_mse_giving_equal_weight_to_all_columns(
-        X: np.array,
-        X_observed: np.array,
-        X_completion: np.array,
-        exclude_observed: bool = True,
-        verbose: bool = False)\
-        -> float:
+    X: np.array, X_observed: np.array, X_completion: np.array, exclude_observed: bool = True, verbose: bool = False
+) -> float:
     r"""
     TODO: Remove?
     Computes the MSE, giving the same weight to each column. This is achieved by dividing each
@@ -301,14 +282,15 @@ def compute_mse_giving_equal_weight_to_all_columns(
         X_completion=X_completion,
         exclude_observed=exclude_observed,
         give_each_column_equal_weight=True,
-        verbose=verbose
+        verbose=verbose,
     )
     ncols = X.shape[1]
     mse_giving_equal_weight_to_all_columns = 0.0
     total_entries_summed = 0
     for c in range(ncols):
-        indices_to_use = np.where(np.isnan(X_observed[:, c])) if exclude_observed\
-            else np.where(~np.isnan(X[:, c]))  # hacky way to say "all indices"...
+        indices_to_use = (
+            np.where(np.isnan(X_observed[:, c])) if exclude_observed else np.where(~np.isnan(X[:, c]))
+        )  # hacky way to say "all indices"...
         mse_giving_equal_weight_to_all_columns += mse_per_column[c] * len(indices_to_use[0])
         total_entries_summed += len(indices_to_use[0])
     if total_entries_summed > 0:
@@ -317,20 +299,17 @@ def compute_mse_giving_equal_weight_to_all_columns(
 
 
 def compute_mse_global(
-        X: np.array,
-        X_observed: np.array,
-        X_completion: np.array,
-        exclude_observed: bool = True,
-        verbose: bool = False)\
-        -> float:
+    X: np.array, X_observed: np.array, X_completion: np.array, exclude_observed: bool = True, verbose: bool = False
+) -> float:
     r"""
     Computes the global MSE between predictions and ground truth.
     Note that this is not per-column: it is the _average_ over all columns.
     """
     if verbose:
         print(f"In compute_mse_global ... ")  # pragma: no cover
-    indices_to_use = np.where(np.isnan(X_observed)) if exclude_observed\
-        else np.where(~np.isnan(X))  # hacky way to say "all indices"...
+    indices_to_use = (
+        np.where(np.isnan(X_observed)) if exclude_observed else np.where(~np.isnan(X))
+    )  # hacky way to say "all indices"...
     y_true = X[indices_to_use]
     y_pred = X_completion[indices_to_use]
     error = y_true - y_pred
@@ -342,9 +321,8 @@ def compute_mse_global(
 
 
 def variance_explained_upper_bounds(
-        X: np.array,
-        give_each_column_equal_weight: bool = True,
-        k: Optional[int] = None) -> np.array:
+    X: np.array, give_each_column_equal_weight: bool = True, k: Optional[int] = None
+) -> np.array:
     r"""
     TODO: At position 0, make the variance explained be zero?
     Maximum possible variance explained when approximating X by a rank k matrix,
@@ -380,10 +358,7 @@ def compute_best_low_rank_approximation(X: np.array, k: int) -> np.array:
     return res
 
 
-def compute_variance_explained(
-        X: np.array,
-        X_pred: np.array,
-        give_each_column_equal_weight: bool = True) -> float:
+def compute_variance_explained(X: np.array, X_pred: np.array, give_each_column_equal_weight: bool = True) -> float:
     r"""
     Implemented as sum of MSEs of all columns, divided by squared L2 norm of X.
     :param give_each_column_equal_weight: If True:
@@ -391,20 +366,23 @@ def compute_variance_explained(
         - predicted columns that are not almost equal yet ground truth is constant, have MSE nan.
         - for all other columns, the usual MSE is scaled by dividing by the true std ** 2.
     """
-    sses = compute_mse_per_column(X, X, X_pred, exclude_observed=False,
-                                  give_each_column_equal_weight=give_each_column_equal_weight,
-                                  return_sum_instead_of_mean=True)
+    sses = compute_mse_per_column(
+        X,
+        X,
+        X_pred,
+        exclude_observed=False,
+        give_each_column_equal_weight=give_each_column_equal_weight,
+        return_sum_instead_of_mean=True,
+    )
     if give_each_column_equal_weight:
         X = standardize(X)
-    res = 1.0 - np.sum(sses) / np.sum(X ** 2)
+    res = 1.0 - np.sum(sses) / np.sum(X**2)
     return res
 
 
 def compute_variance_explained_excluding_observed_entries(
-        X: np.array,
-        X_observed: np.array,
-        X_pred: np.array,
-        give_each_column_equal_weight: bool = True) -> float:
+    X: np.array, X_observed: np.array, X_pred: np.array, give_each_column_equal_weight: bool = True
+) -> float:
     r"""
     TODO: Untested & Unused.
     Implemented as sum of MSEs of all columns, divided by squared L2 norm of X.
@@ -413,9 +391,14 @@ def compute_variance_explained_excluding_observed_entries(
         - predicted columns that are not almost equal yet ground truth is constant, have MSE nan.
         - for all other columns, the usual MSE is scaled by dividing by the true std ** 2.
     """
-    sses = compute_mse_per_column(X, X_observed, X_pred, exclude_observed=True,
-                                  give_each_column_equal_weight=give_each_column_equal_weight,
-                                  return_sum_instead_of_mean=True)
+    sses = compute_mse_per_column(
+        X,
+        X_observed,
+        X_pred,
+        exclude_observed=True,
+        give_each_column_equal_weight=give_each_column_equal_weight,
+        return_sum_instead_of_mean=True,
+    )
     if give_each_column_equal_weight:
         X = standardize(X)
     indices_to_use = np.where(np.isnan(X_observed))
@@ -425,9 +408,7 @@ def compute_variance_explained_excluding_observed_entries(
     return res
 
 
-def compute_squared_error_fast(
-        X_true: np.array,
-        X_completion: np.array) -> float:
+def compute_squared_error_fast(X_true: np.array, X_completion: np.array) -> float:
     r"""
     Squared Error, normalizing all columns. X_true and X_completion must be fully observed.
     Can blow up if constant functions are not exactly constant in the predictions. In that case, use the
@@ -437,13 +418,10 @@ def compute_squared_error_fast(
     col_stds = X_true.std(axis=0)
     X_true = (X_true - col_means) / (col_stds + 1e-16)
     X_completion = (X_completion - col_means) / (col_stds + 1e-16)
-    return np.linalg.norm(X_true - X_completion, 'fro') ** 2
+    return np.linalg.norm(X_true - X_completion, "fro") ** 2
 
 
-def compute_variance_explained_fast(
-        X_true: np.array,
-        X_completion: np.array,
-        pseudo_std: float = 1e-3) -> float:
+def compute_variance_explained_fast(X_true: np.array, X_completion: np.array, pseudo_std: float = 1e-3) -> float:
     r"""
     Variance Explained, normalizing all columns. X_true and X_completion must be fully observed.
     Can blow up if constant functions are not exactly constant in the predictions. In that case, use the
@@ -457,4 +435,4 @@ def compute_variance_explained_fast(
     col_stds = X_true.std(axis=0)
     X_true = (X_true - col_means) / (col_stds + pseudo_std)
     X_completion = (X_completion - col_means) / (col_stds + pseudo_std)
-    return 1.0 - np.linalg.norm(X_true - X_completion, 'fro') ** 2 / (np.linalg.norm(X_true, 'fro') ** 2 + pseudo_std)
+    return 1.0 - np.linalg.norm(X_true - X_completion, "fro") ** 2 / (np.linalg.norm(X_true, "fro") ** 2 + pseudo_std)

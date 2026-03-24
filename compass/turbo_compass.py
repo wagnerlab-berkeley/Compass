@@ -24,13 +24,14 @@ import compass
 logger = logging.getLogger("compass")
 
 
-class CompassResourceManager():
+class CompassResourceManager:
     r"""
     Hackily exposes some new interfaces in Compass, e.g. determining which cells
     Compass is being run on, the reaction ids, etc.
     Thus, this class knows the details of where Compass output data files are located,
     how to parse them, etc.
     """
+
     def __init__(self, compass_args: List[str], meta_subsystem_models_dir=None, meta_subsystem_model=None):
         r"""
         :param compass_args: Arguments used to call Compass (as obtained from sys.argv)
@@ -40,7 +41,7 @@ class CompassResourceManager():
         self.meta_subsystem_models_dir = meta_subsystem_models_dir
         self.meta_subsystem_model = meta_subsystem_model
         self.logger_dir = get_argument(self.compass_args, "--output-dir")
-        with patch.object(sys, 'argv', self.compass_args):
+        with patch.object(sys, "argv", self.compass_args):
             self.compass_parsed_args = compass.main.parseArgs()
 
     def get_cell_names(self) -> List[str]:
@@ -48,9 +49,9 @@ class CompassResourceManager():
         Returns the list of cell names on which Compass is being run.
         """
         logger.info("CompassResourceManager getting cell names ...")
-        data = utils.read_data(self.compass_parsed_args['data'])
+        data = utils.read_data(self.compass_parsed_args["data"])
         if "--single-sample" in self.compass_args:
-            sample_number = int(self.compass_parsed_args['single_sample'])
+            sample_number = int(self.compass_parsed_args["single_sample"])
             return [data.columns[sample_number]]
         else:
             return list(data.columns)
@@ -63,44 +64,47 @@ class CompassResourceManager():
         # Run Compass on one cell, patching CPLEX to do nothing.
         with tempfile.TemporaryDirectory() as output_dir_name:
             logger.info(
-                f"CompassResourceManager created temporary output directory "
-                f"'{output_dir_name}' for calling Compass ...")
+                f"CompassResourceManager created temporary output directory '{output_dir_name}' for calling Compass ..."
+            )
             compass_args = self.compass_args[:]
 
             # Run Module-Compass on one meta-subsystem
             # Set cache and models_dir argument to avoid repeated cache computation and model partitioning
             # Set temp dir argument to avoid repeated penalty computation
             # Set meta subsystem model name to avoid repeated reaction score computation for other meta subsystems
-            if self.compass_parsed_args['select_meta_subsystems'] is not None:
-                set_argument(compass_args, "--turbo-meta-subsystem-preprocess-cache-dir", 
-                             os.path.join(self.compass_parsed_args['output_dir'], 'meta_subsystem_cache'))
+            if self.compass_parsed_args["select_meta_subsystems"] is not None:
+                set_argument(
+                    compass_args,
+                    "--turbo-meta-subsystem-preprocess-cache-dir",
+                    os.path.join(self.compass_parsed_args["output_dir"], "meta_subsystem_cache"),
+                )
                 set_argument(compass_args, "--turbo-meta-subsystem-models-dir", self.meta_subsystem_models_dir)
                 set_argument(compass_args, "--turbo-meta-subsystem-model", self.meta_subsystem_model)
-                set_argument(compass_args, "--turbo-meta-subsystem-model-temp-dir",
-                             os.path.join(self.compass_parsed_args['temp_dir'], self.meta_subsystem_model))
+                set_argument(
+                    compass_args,
+                    "--turbo-meta-subsystem-model-temp-dir",
+                    os.path.join(self.compass_parsed_args["temp_dir"], self.meta_subsystem_model),
+                )
 
             # Run Turbo-Compass
             # Set temp dir argument to avoid repeated penalty computation
             else:
-                set_argument(compass_args, "--turbo-temp-dir", os.path.join(self.compass_parsed_args['temp_dir']))
+                set_argument(compass_args, "--turbo-temp-dir", os.path.join(self.compass_parsed_args["temp_dir"]))
 
             set_argument(compass_args, "--single-sample", "0")
             set_argument(compass_args, "--output-dir", output_dir_name)
-            dummy_selected_reactions_file = tempfile.NamedTemporaryFile('w')
-            set_argument(
-                compass_args,
-                "--selected-reactions-for-each-cell",
-                dummy_selected_reactions_file.name
-            )
-            
-            # This replaces sys.argv with compass_args so that when compass.main.entry() is called, 
+            dummy_selected_reactions_file = tempfile.NamedTemporaryFile("w")
+            set_argument(compass_args, "--selected-reactions-for-each-cell", dummy_selected_reactions_file.name)
+
+            # This replaces sys.argv with compass_args so that when compass.main.entry() is called,
             # it uses the provided arguments instead of the actual command-line arguments.
             # This avoids performing the actual optimization and returns a mocked solution instead.
-            with patch.object(sys, 'argv', compass_args):
+            with patch.object(sys, "argv", compass_args):
                 compass.main.entry()
             globals.init_logger(self.logger_dir)
-            reaction_scores = CompassResourceManager(compass_args=compass_args, 
-                                                     meta_subsystem_model=self.meta_subsystem_model).get_reaction_scores()
+            reaction_scores = CompassResourceManager(
+                compass_args=compass_args, meta_subsystem_model=self.meta_subsystem_model
+            ).get_reaction_scores()
             reaction_ids = list(reaction_scores.index)
             return reaction_ids
 
@@ -111,14 +115,18 @@ class CompassResourceManager():
         logger.info("CompassResourceManager getting reactions scores ...")
         if "--single-sample" in self.compass_args:
             if self.meta_subsystem_model is not None:
-                reaction_scores_path = os.path.join(self.compass_parsed_args['temp_dir'], self.meta_subsystem_model, 'reactions.txt')
+                reaction_scores_path = os.path.join(
+                    self.compass_parsed_args["temp_dir"], self.meta_subsystem_model, "reactions.txt"
+                )
             else:
-                reaction_scores_path = os.path.join(self.compass_parsed_args['temp_dir'], 'reactions.txt')
+                reaction_scores_path = os.path.join(self.compass_parsed_args["temp_dir"], "reactions.txt")
         else:
             if self.meta_subsystem_model is not None:
-                reaction_scores_path = os.path.join(self.compass_parsed_args['output_dir'], self.meta_subsystem_model, 'reactions.tsv')
+                reaction_scores_path = os.path.join(
+                    self.compass_parsed_args["output_dir"], self.meta_subsystem_model, "reactions.tsv"
+                )
             else:
-                reaction_scores_path = os.path.join(self.compass_parsed_args['output_dir'], 'reactions.tsv')
+                reaction_scores_path = os.path.join(self.compass_parsed_args["output_dir"], "reactions.tsv")
 
         logger.info(f"Trying to read reaction scores from '{reaction_scores_path}' ...")
         reaction_scores = pd.read_csv(reaction_scores_path, sep="\t", index_col=0)
@@ -129,9 +137,9 @@ class CompassResourceManager():
         Returns the directory where the temporary data is stored.
         """
         if self.meta_subsystem_model is not None:
-            return os.path.join(self.compass_parsed_args['temp_dir'], self.meta_subsystem_model)
+            return os.path.join(self.compass_parsed_args["temp_dir"], self.meta_subsystem_model)
         else:
-            return self.compass_parsed_args['temp_dir']
+            return self.compass_parsed_args["temp_dir"]
 
     def _check_cache_is_present(self):
         """
@@ -143,8 +151,10 @@ class CompassResourceManager():
         media = self.compass_parsed_args["media"]
         if media is None:
             raise ValueError(f"Please explicitly provide the media used with --media")
-        if self.compass_parsed_args['select_meta_subsystems'] is not None:
-            meta_subsystem_preprocess_cache_dir = os.path.join(self.compass_parsed_args['output_dir'], 'meta_subsystem_cache')
+        if self.compass_parsed_args["select_meta_subsystems"] is not None:
+            meta_subsystem_preprocess_cache_dir = os.path.join(
+                self.compass_parsed_args["output_dir"], "meta_subsystem_cache"
+            )
             cache.load(self.meta_subsystem_model, media, preprocess_cache_dir=meta_subsystem_preprocess_cache_dir)
             if len(cache._cache[(self.meta_subsystem_model, media)]) == 0:
                 raise ValueError(
@@ -171,20 +181,20 @@ class CompassOracle(MatrixOracle):
         logger.info("Initializing CompassOracle ...")
         # Let's first figure out on what cells and reactions Compass is being run on.
         self.compass_args = compass_args[:]
-        with patch.object(sys, 'argv', self.compass_args):
+        with patch.object(sys, "argv", self.compass_args):
             self.compass_parsed_args = compass.main.parseArgs()
         self.meta_subsystem_models_dir = meta_subsystem_models_dir
         self.meta_subsystem_model = meta_subsystem_model
         self.logger_dir = get_argument(self.compass_args, "--output-dir")
-        compass_resource_manager = CompassResourceManager(compass_args=compass_args, 
-                                                          meta_subsystem_models_dir=meta_subsystem_models_dir,
-                                                          meta_subsystem_model=meta_subsystem_model)
+        compass_resource_manager = CompassResourceManager(
+            compass_args=compass_args,
+            meta_subsystem_models_dir=meta_subsystem_models_dir,
+            meta_subsystem_model=meta_subsystem_model,
+        )
         compass_resource_manager._check_cache_is_present()
         self.cell_names = np.array(compass_resource_manager.get_cell_names())
         self.reaction_ids = np.array(compass_resource_manager.get_reaction_ids())
-        cache_dir = os.path.join(
-            compass_resource_manager.get_temporary_directory(),
-            "turbo_compass_cache")
+        cache_dir = os.path.join(compass_resource_manager.get_temporary_directory(), "turbo_compass_cache")
         # Write out cell names and reaction ids just for logging / debugging.
         self._save_cell_names_and_reaction_ids_for_debugging(cache_dir)
         # Caching
@@ -199,7 +209,7 @@ class CompassOracle(MatrixOracle):
         rows, cols, vals = [], [], []
         with open(self.cache_filepath, "r") as cache_file:
             for line in cache_file:
-                row, col, val = line.strip('\n').split(' ')
+                row, col, val = line.strip("\n").split(" ")
                 rows.append(int(row)), cols.append(int(col)), vals.append(float(val))
         logger.info(f"CompassOracle loaded {len(vals)} observations from the cache!")
         self._add_observations(rows, cols, vals)
@@ -220,7 +230,7 @@ class CompassOracle(MatrixOracle):
             """
             # If the cache already exists, check that it has the right content!
             # Or else, something is VERY wrong with the cache and we should raise.
-            output_str = '\n'.join(names) + '\n'
+            output_str = "\n".join(names) + "\n"
             if os.path.exists(filepath):
                 with open(filepath) as f:
                     file_contents = f.read()
@@ -236,6 +246,7 @@ class CompassOracle(MatrixOracle):
                 os.makedirs(os.path.dirname(filepath))
             with open(filepath, "w") as cache_file:
                 cache_file.write(output_str)
+
         validate_cache_and_write_out_list_of_strings(cell_names_filepath, list(self.cell_names))
         validate_cache_and_write_out_list_of_strings(reaction_ids_filepath, list(self.reaction_ids))
 
@@ -245,26 +256,24 @@ class CompassOracle(MatrixOracle):
         """
         return len(self.cell_names), len(self.reaction_ids)
 
-    def _observe_entries(
-        self,
-        rows: List[int],
-        cols: List[int],
-        iter: int
-    ) -> np.array:
+    def _observe_entries(self, rows: List[int], cols: List[int], iter: int) -> np.array:
         # Start by running Compass on the selected cells (rows) and reactions (cols).
-        assert("--selected-reactions-for-each-cell" not in self.compass_args)
+        assert "--selected-reactions-for-each-cell" not in self.compass_args
         compass_args_to_observe_entries = self.compass_args[:]
         if self.meta_subsystem_model is not None:
-            iter_output_dir = os.path.join(self.compass_parsed_args['temp_dir'], 
-                                           self.meta_subsystem_model, f'iteration_{iter + 1}')
+            iter_output_dir = os.path.join(
+                self.compass_parsed_args["temp_dir"], self.meta_subsystem_model, f"iteration_{iter + 1}"
+            )
         else:
-            iter_output_dir = os.path.join(self.compass_parsed_args['temp_dir'], f'iteration_{iter + 1}')
-        selected_reactions_file_path = os.path.join(iter_output_dir, 'selected_reactions.txt')
+            iter_output_dir = os.path.join(self.compass_parsed_args["temp_dir"], f"iteration_{iter + 1}")
+        selected_reactions_file_path = os.path.join(iter_output_dir, "selected_reactions.txt")
         if not os.path.exists(iter_output_dir):
             os.makedirs(iter_output_dir)
-        with open(selected_reactions_file_path, 'w+') as selected_reactions_file:
+        with open(selected_reactions_file_path, "w+") as selected_reactions_file:
             # Create list of selected cells and reactions
-            logger.info(f"CompassOracle populating the file {selected_reactions_file.name} with the selected cells and reactions ...")
+            logger.info(
+                f"CompassOracle populating the file {selected_reactions_file.name} with the selected cells and reactions ..."
+            )
             self._populate_selected_reactions_file(rows, cols, selected_reactions_file.name)
             # Now run Compass
 
@@ -272,73 +281,72 @@ class CompassOracle(MatrixOracle):
             # Set cache and models_dir argument to avoid repeated cache computation and model partitioning
             # Set temp dir argument to avoid repeated penalty computation
             # Set meta subsystem model name to avoid repeated reaction score computation for other meta subsystems
-            if self.compass_parsed_args['select_meta_subsystems'] is not None:
-                set_argument(compass_args_to_observe_entries, "--turbo-meta-subsystem-preprocess-cache-dir", 
-                             os.path.join(self.compass_parsed_args['output_dir'], 'meta_subsystem_cache'))
-                set_argument(compass_args_to_observe_entries, "--turbo-meta-subsystem-models-dir", self.meta_subsystem_models_dir)
+            if self.compass_parsed_args["select_meta_subsystems"] is not None:
+                set_argument(
+                    compass_args_to_observe_entries,
+                    "--turbo-meta-subsystem-preprocess-cache-dir",
+                    os.path.join(self.compass_parsed_args["output_dir"], "meta_subsystem_cache"),
+                )
+                set_argument(
+                    compass_args_to_observe_entries, "--turbo-meta-subsystem-models-dir", self.meta_subsystem_models_dir
+                )
                 set_argument(compass_args_to_observe_entries, "--turbo-meta-subsystem-model", self.meta_subsystem_model)
-                set_argument(compass_args_to_observe_entries, "--turbo-meta-subsystem-model-temp-dir",
-                             os.path.join(self.compass_parsed_args['temp_dir'], self.meta_subsystem_model))
+                set_argument(
+                    compass_args_to_observe_entries,
+                    "--turbo-meta-subsystem-model-temp-dir",
+                    os.path.join(self.compass_parsed_args["temp_dir"], self.meta_subsystem_model),
+                )
 
             # Run Turbo-Compass
             # Set temp dir argument to avoid repeated penalty computation
             else:
-                set_argument(compass_args_to_observe_entries, "--turbo-temp-dir", os.path.join(self.compass_parsed_args['temp_dir']))
+                set_argument(
+                    compass_args_to_observe_entries,
+                    "--turbo-temp-dir",
+                    os.path.join(self.compass_parsed_args["temp_dir"]),
+                )
 
             set_argument(
-                compass_args_to_observe_entries,
-                "--selected-reactions-for-each-cell",
-                selected_reactions_file.name)
-            logger.info(
-                f"CompassOracle created output directory "
-                f"'{iter_output_dir}' for running Compass")
+                compass_args_to_observe_entries, "--selected-reactions-for-each-cell", selected_reactions_file.name
+            )
+            logger.info(f"CompassOracle created output directory '{iter_output_dir}' for running Compass")
             set_argument(compass_args_to_observe_entries, "--output-dir", iter_output_dir)
             logger.info("CompassOracle running Compass for the selected subset of the reaction score matrix ...")
-            with patch.object(sys, 'argv', compass_args_to_observe_entries):
+            with patch.object(sys, "argv", compass_args_to_observe_entries):
                 compass.main.entry()
             globals.init_logger(self.logger_dir)
-            logger.info(
-                "CompassOracle successfully ran Compass. "
-                "Now will retrieve the computed reaction scores ...")
+            logger.info("CompassOracle successfully ran Compass. Now will retrieve the computed reaction scores ...")
             # Retrieve reaction scores.
-            compass_resource_manager = CompassResourceManager(compass_args_to_observe_entries, self.meta_subsystem_model)
+            compass_resource_manager = CompassResourceManager(
+                compass_args_to_observe_entries, self.meta_subsystem_model
+            )
             reaction_scores = compass_resource_manager.get_reaction_scores()
             # Check that rows and cols agree
-            assert(list(reaction_scores.columns) == list(self.cell_names))
-            assert(list(reaction_scores.index) == list(self.reaction_ids))
+            assert list(reaction_scores.columns) == list(self.cell_names)
+            assert list(reaction_scores.index) == list(self.reaction_ids)
             vals = reaction_scores.to_numpy().T[(rows, cols)]
             logger.info("CompassOracle caching the latest Compass results ...")
             self._cache_observations(rows, cols, list(vals), self.cache_filepath)
             return vals
 
-    def _populate_selected_reactions_file(
-        self,
-        rows: List[int],
-        cols: List[int],
-        filename: str
-    ) -> None:
+    def _populate_selected_reactions_file(self, rows: List[int], cols: List[int], filename: str) -> None:
         r"""
         Populates the file which will be later passed to Compass via the
         --selected-reactions-for-each-cell argument.
         """
         with open(filename, "w") as file:
             row_to_cols_mapping = defaultdict(list)
-            for (r, c) in zip(rows, cols):
+            for r, c in zip(rows, cols):
                 row_to_cols_mapping[r].append(c)
             for row, columns in row_to_cols_mapping.items():
                 cell_name = self.cell_names[row]
                 reaction_ids = self.reaction_ids[columns]
                 tokens = [cell_name] + list(reaction_ids)
-                line_for_this_cell = ','.join(tokens) + '\n'
+                line_for_this_cell = ",".join(tokens) + "\n"
                 file.write(line_for_this_cell)
 
-
     @staticmethod
-    def _cache_observations(
-            rows: List[int],
-            cols: List[int],
-            vals: List[float],
-            cache_filepath: str):
+    def _cache_observations(rows: List[int], cols: List[int], vals: List[float], cache_filepath: str):
         r"""
         Adds the newly observed (row, col, val) triples to the cache. The structure of
         the cache is one line per observation, e.g.:
@@ -347,8 +355,8 @@ class CompassOracle(MatrixOracle):
         123 4567 8901.2
         ...
         """
-        assert(len(rows) == len(cols))
-        assert(len(rows) == len(vals))
+        assert len(rows) == len(cols)
+        assert len(rows) == len(vals)
         output_str = ""
         for row, col, val in zip(rows, cols, vals):
             output_str += f"{row} {col} {val}\n"
@@ -385,8 +393,8 @@ def pop_argument(args: List[str], arg: str) -> Tuple[List[str], str]:
         return args[:], ""
     for i in range(len(args) - 1):
         if args[i] == arg:
-            return args[:i] + args[(i + 2):], args[i + 1]
-    assert(False)
+            return args[:i] + args[(i + 2) :], args[i + 1]
+    assert False
 
 
 def get_argument(args: List, arg_name: str) -> str:
@@ -395,47 +403,48 @@ def get_argument(args: List, arg_name: str) -> str:
     for i in range(len(args) - 1):
         if args[i] == arg_name:
             return args[i + 1]
-    assert(False)
+    assert False
 
 
 def turbo_compass_entry(meta_subsystem_models_dir=None, model_names=None) -> None:
     logger.info("\n******** Turbo Compass started ********")
     # Extract turbo arguments.
     import compass.main
+
     compass_parsed_args = compass.main.parseArgs()
-    requested_cv_spearman_r2, increments, min_pct_meet_sr2_requirement, max_iters =\
-        compass_parsed_args['turbo'],\
-        compass_parsed_args['turbo_increments'],\
-        compass_parsed_args['turbo_min_pct'],\
-        compass_parsed_args['turbo_max_iters']
+    requested_cv_spearman_r2, increments, min_pct_meet_sr2_requirement, max_iters = (
+        compass_parsed_args["turbo"],
+        compass_parsed_args["turbo_increments"],
+        compass_parsed_args["turbo_min_pct"],
+        compass_parsed_args["turbo_max_iters"],
+    )
     logger.info(
         f"Running Turbo Compass with arguments:\n"
         f"--turbo={requested_cv_spearman_r2}\n"
         f"--turbo-increments={increments}\n"
         f"--turbo-min-pct={min_pct_meet_sr2_requirement}\n"
-        f"--turbo-max-iters={max_iters}")
+        f"--turbo-max-iters={max_iters}"
+    )
 
     # Remove turbo arguments from the command line call, and create the CompassOracle for the new command line.
     compass_args = sys.argv[:]
-    compass_args, _ = pop_argument(compass_args, '--turbo')
-    compass_args, _ = pop_argument(compass_args, '--turbo-increments')
-    compass_args, _ = pop_argument(compass_args, '--turbo-min-pct')
-    compass_args, _ = pop_argument(compass_args, '--turbo-max-iters')
+    compass_args, _ = pop_argument(compass_args, "--turbo")
+    compass_args, _ = pop_argument(compass_args, "--turbo-increments")
+    compass_args, _ = pop_argument(compass_args, "--turbo-min-pct")
+    compass_args, _ = pop_argument(compass_args, "--turbo-max-iters")
 
     # If Module-Compass is enabled, then run Turbo-Compass for each subsystem
-    if compass_parsed_args['select_meta_subsystems']:
-        
-        meta_subsystem_preprocess_cache_dir = os.path.join(compass_parsed_args['output_dir'], 'meta_subsystem_cache')
+    if compass_parsed_args["select_meta_subsystems"]:
+        meta_subsystem_preprocess_cache_dir = os.path.join(compass_parsed_args["output_dir"], "meta_subsystem_cache")
         if os.path.exists(meta_subsystem_preprocess_cache_dir) == False:
             os.mkdir(meta_subsystem_preprocess_cache_dir)
 
         for meta_subsystem_model in model_names:
-
-            meta_subsystem_model_temp_dir = os.path.join(compass_parsed_args['temp_dir'], meta_subsystem_model)
+            meta_subsystem_model_temp_dir = os.path.join(compass_parsed_args["temp_dir"], meta_subsystem_model)
             if os.path.exists(meta_subsystem_model_temp_dir) == False:
                 os.mkdir(meta_subsystem_model_temp_dir)
 
-            meta_subsystem_model_output_dir = os.path.join(compass_parsed_args['output_dir'], meta_subsystem_model)
+            meta_subsystem_model_output_dir = os.path.join(compass_parsed_args["output_dir"], meta_subsystem_model)
             if os.path.exists(meta_subsystem_model_output_dir) == False:
                 os.mkdir(meta_subsystem_model_output_dir)
 
@@ -444,40 +453,47 @@ def turbo_compass_entry(meta_subsystem_models_dir=None, model_names=None) -> Non
             # CompassOracle gets cell names by reading input count matrix, cell names are stored in turbo_compass_cache/cell_names.txt
             # CompassOracle get reaction IDs by running Compass on a single sample, reaction IDs are stored in turbo_compass_cache/reaction_ids.txt
             # compass_matrix_oracle has shape (# of cells, # of reactions)
-            compass_matrix_oracle = CompassOracle(compass_args[:], meta_subsystem_models_dir=meta_subsystem_models_dir, 
-                                                  meta_subsystem_model=meta_subsystem_model)
+            compass_matrix_oracle = CompassOracle(
+                compass_args[:],
+                meta_subsystem_models_dir=meta_subsystem_models_dir,
+                meta_subsystem_model=meta_subsystem_model,
+            )
 
-            model =\
-                IterativeMCMWithGuaranteedSpearmanR2(
-                    cv_model=lambda state:
-                        TrainValSplitCVMatrixCompletionModel(
-                            ExcludeConstantColumnsModelWrapper(
-                                ColumnNormalizerModelWrapper(
-                                    MatrixCompletionFastALS(
-                                        n_factors=max(1, int(min(state.R, state.C) * state.sampled_density * 0.5)),
-                                        lam=10.0,
-                                        n_epochs=100,
-                                        verbose=False))),
-                            train_ratio=0.8,
-                            verbose=True,
-                            finally_refit_model=None),
-                    requested_cv_spearman_r2=requested_cv_spearman_r2,
-                    sampling_density=increments,
-                    finally_refit_model=lambda state:
-                        ExcludeConstantColumnsModelWrapper(
-                            ColumnNormalizerModelWrapper(
-                                MatrixCompletionFastALS(
-                                    n_factors=int(min(state.R, state.C) * state.sampled_density * 0.5),
-                                    lam=10.0,
-                                    n_epochs=300,
-                                    verbose=False))),
-                    min_pct_meet_sr2_requirement=min_pct_meet_sr2_requirement,
+            model = IterativeMCMWithGuaranteedSpearmanR2(
+                cv_model=lambda state: TrainValSplitCVMatrixCompletionModel(
+                    ExcludeConstantColumnsModelWrapper(
+                        ColumnNormalizerModelWrapper(
+                            MatrixCompletionFastALS(
+                                n_factors=max(1, int(min(state.R, state.C) * state.sampled_density * 0.5)),
+                                lam=10.0,
+                                n_epochs=100,
+                                verbose=False,
+                            )
+                        )
+                    ),
+                    train_ratio=0.8,
                     verbose=True,
-                    plot_progress=False,
-                    max_iterations=max_iters,
-                    logger_dir=compass_matrix_oracle.logger_dir
-                )
-            
+                    finally_refit_model=None,
+                ),
+                requested_cv_spearman_r2=requested_cv_spearman_r2,
+                sampling_density=increments,
+                finally_refit_model=lambda state: ExcludeConstantColumnsModelWrapper(
+                    ColumnNormalizerModelWrapper(
+                        MatrixCompletionFastALS(
+                            n_factors=int(min(state.R, state.C) * state.sampled_density * 0.5),
+                            lam=10.0,
+                            n_epochs=300,
+                            verbose=False,
+                        )
+                    )
+                ),
+                min_pct_meet_sr2_requirement=min_pct_meet_sr2_requirement,
+                verbose=True,
+                plot_progress=False,
+                max_iterations=max_iters,
+                logger_dir=compass_matrix_oracle.logger_dir,
+            )
+
             # Fit iterative model. This is the core procedure of Turbo Compass (here is where all the magic happens)
             logger.info(f"Turbo Compass performing iterative matrix completion for {meta_subsystem_model} ...")
             np.random.seed(1)
@@ -488,19 +504,22 @@ def turbo_compass_entry(meta_subsystem_models_dir=None, model_names=None) -> Non
             # Write out imputation
             logger.info(f"Turbo Compass writing out imputation for {meta_subsystem_model} ...")
             if "--single-sample" in compass_args:
-                if not os.path.isdir(compass_parsed_args['temp_dir']):
-                    os.makedirs(compass_parsed_args['temp_dir'])
-                reaction_scores_path = os.path.join(compass_parsed_args['temp_dir'], meta_subsystem_model, 'reactions.txt')
+                if not os.path.isdir(compass_parsed_args["temp_dir"]):
+                    os.makedirs(compass_parsed_args["temp_dir"])
+                reaction_scores_path = os.path.join(
+                    compass_parsed_args["temp_dir"], meta_subsystem_model, "reactions.txt"
+                )
             else:
-                if not os.path.isdir(compass_parsed_args['output_dir']):
-                    os.makedirs(compass_parsed_args['output_dir'])
-                reaction_scores_path = os.path.join(compass_parsed_args['output_dir'], meta_subsystem_model, 'reactions.tsv')
+                if not os.path.isdir(compass_parsed_args["output_dir"]):
+                    os.makedirs(compass_parsed_args["output_dir"])
+                reaction_scores_path = os.path.join(
+                    compass_parsed_args["output_dir"], meta_subsystem_model, "reactions.tsv"
+                )
             cell_names = compass_matrix_oracle.cell_names[:]
             reaction_ids = compass_matrix_oracle.reaction_ids[:]
             X_imputed_df = pd.DataFrame(data=X_imputed, index=reaction_ids, columns=cell_names)
             X_imputed_df.to_csv(reaction_scores_path, sep="\t")
             logger.info(f"Turbo Compass for {meta_subsystem_model} completed successfully!")
-
 
     else:
         logger.info("\nTurbo Compass creating the CompassOracle ...")
@@ -510,36 +529,40 @@ def turbo_compass_entry(meta_subsystem_models_dir=None, model_names=None) -> Non
         # compass_matrix_oracle has shape (# of cells, # of reactions)
         compass_matrix_oracle = CompassOracle(compass_args[:])
 
-        model =\
-            IterativeMCMWithGuaranteedSpearmanR2(
-                cv_model=lambda state:
-                    TrainValSplitCVMatrixCompletionModel(
-                        ExcludeConstantColumnsModelWrapper(
-                            ColumnNormalizerModelWrapper(
-                                MatrixCompletionFastALS(
-                                    n_factors=max(1, int(min(state.R, state.C) * state.sampled_density * 0.5)),
-                                    lam=10.0,
-                                    n_epochs=100,
-                                    verbose=False))),
-                        train_ratio=0.8,
-                        verbose=True,
-                        finally_refit_model=None),
-                requested_cv_spearman_r2=requested_cv_spearman_r2,
-                sampling_density=increments,
-                finally_refit_model=lambda state:
-                    ExcludeConstantColumnsModelWrapper(
-                        ColumnNormalizerModelWrapper(
-                            MatrixCompletionFastALS(
-                                n_factors=int(min(state.R, state.C) * state.sampled_density * 0.5),
-                                lam=10.0,
-                                n_epochs=300,
-                                verbose=False))),
-                min_pct_meet_sr2_requirement=min_pct_meet_sr2_requirement,
+        model = IterativeMCMWithGuaranteedSpearmanR2(
+            cv_model=lambda state: TrainValSplitCVMatrixCompletionModel(
+                ExcludeConstantColumnsModelWrapper(
+                    ColumnNormalizerModelWrapper(
+                        MatrixCompletionFastALS(
+                            n_factors=max(1, int(min(state.R, state.C) * state.sampled_density * 0.5)),
+                            lam=10.0,
+                            n_epochs=100,
+                            verbose=False,
+                        )
+                    )
+                ),
+                train_ratio=0.8,
                 verbose=True,
-                plot_progress=False,
-                max_iterations=max_iters,
-                logger_dir=compass_matrix_oracle.logger_dir
-            )
+                finally_refit_model=None,
+            ),
+            requested_cv_spearman_r2=requested_cv_spearman_r2,
+            sampling_density=increments,
+            finally_refit_model=lambda state: ExcludeConstantColumnsModelWrapper(
+                ColumnNormalizerModelWrapper(
+                    MatrixCompletionFastALS(
+                        n_factors=int(min(state.R, state.C) * state.sampled_density * 0.5),
+                        lam=10.0,
+                        n_epochs=300,
+                        verbose=False,
+                    )
+                )
+            ),
+            min_pct_meet_sr2_requirement=min_pct_meet_sr2_requirement,
+            verbose=True,
+            plot_progress=False,
+            max_iterations=max_iters,
+            logger_dir=compass_matrix_oracle.logger_dir,
+        )
 
         # Fit iterative model. This is the core procedure of Turbo Compass (here is where all the magic happens)
         logger.info("Turbo Compass performing iterative matrix completion ...")
@@ -551,18 +574,17 @@ def turbo_compass_entry(meta_subsystem_models_dir=None, model_names=None) -> Non
         # Write out imputation
         logger.info("Turbo Compass writing out imputation ...")
         if "--single-sample" in compass_args:
-            if not os.path.isdir(compass_parsed_args['temp_dir']):
-                os.makedirs(compass_parsed_args['temp_dir'])
-            reaction_scores_path = os.path.join(compass_parsed_args['temp_dir'], 'reactions.txt')
+            if not os.path.isdir(compass_parsed_args["temp_dir"]):
+                os.makedirs(compass_parsed_args["temp_dir"])
+            reaction_scores_path = os.path.join(compass_parsed_args["temp_dir"], "reactions.txt")
         else:
-            if not os.path.isdir(compass_parsed_args['output_dir']):
-                os.makedirs(compass_parsed_args['output_dir'])
-            reaction_scores_path = os.path.join(compass_parsed_args['output_dir'], 'reactions.tsv')
+            if not os.path.isdir(compass_parsed_args["output_dir"]):
+                os.makedirs(compass_parsed_args["output_dir"])
+            reaction_scores_path = os.path.join(compass_parsed_args["output_dir"], "reactions.tsv")
         cell_names = compass_matrix_oracle.cell_names[:]
         reaction_ids = compass_matrix_oracle.reaction_ids[:]
         X_imputed_df = pd.DataFrame(data=X_imputed, index=reaction_ids, columns=cell_names)
         X_imputed_df.to_csv(reaction_scores_path, sep="\t")
         logger.info("Turbo Compass completed successfully!")
 
-        
     return

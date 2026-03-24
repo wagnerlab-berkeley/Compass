@@ -14,5 +14,7 @@ def timeit(prefix, always_time: bool = False):
                 tot_time = time.time() - start_time
                 print(f"{prefix}::{func.__name__}, time = %.2f" % tot_time)
             return result
+
         return call
+
     return decorate

@@ -22,62 +22,57 @@ def load(model_name, species, metabolic_model_dir=MODEL_DIR):
 
     # First load Genes
     top_dir = os.path.join(metabolic_model_dir, model_name)
-    model_dir = os.path.join(top_dir, 'model')
+    model_dir = os.path.join(top_dir, "model")
 
-    with open(os.path.join(model_dir, 'model.genes.json')) as fin:
+    with open(os.path.join(model_dir, "model.genes.json")) as fin:
         gene_ids = json.load(fin)
 
-    with open(os.path.join(top_dir, 'non2uniqueEntrez.json')) as fin:
+    with open(os.path.join(top_dir, "non2uniqueEntrez.json")) as fin:
         gtx = json.load(fin)
 
-    if species == 'homo_sapiens':
-
-        with open(os.path.join(top_dir, 'uniqueHumanGeneSymbol.json')) as fin:
+    if species == "homo_sapiens":
+        with open(os.path.join(top_dir, "uniqueHumanGeneSymbol.json")) as fin:
             gene_symbols = json.load(fin)
 
         alt_symbols = [[] for x in gene_symbols]
 
-    elif species == 'mus_musculus':
-
-        with open(os.path.join(top_dir, 'uniqueMouseGeneSymbol.json')) as fin:
+    elif species == "mus_musculus":
+        with open(os.path.join(top_dir, "uniqueMouseGeneSymbol.json")) as fin:
             gene_symbols = json.load(fin)
 
-        with open(os.path.join(top_dir, 'uniqueMouseGeneSymbol_all.json')) as fin:
+        with open(os.path.join(top_dir, "uniqueMouseGeneSymbol_all.json")) as fin:
             alt_symbols = json.load(fin)
 
     else:
-        raise Exception(
-            'Unsupported species.  Supported: `homo_sapines`, `mus_musculus`')
+        raise Exception("Unsupported species.  Supported: `homo_sapines`, `mus_musculus`")
 
     genes = []
     for i, gid in enumerate(gene_ids):
-
         gene = Gene()
 
         gene.id = gid
-        non_i = gtx[i]-1
+        non_i = gtx[i] - 1
         gene.name = gene_symbols[non_i].upper()
         gene.alt_symbols = [x.upper() for x in alt_symbols[non_i]]
         genes.append(gene)
 
     # Then reactions (evaluate gene rules)
-    with open(os.path.join(model_dir, 'model.rxns.json')) as fin:
+    with open(os.path.join(model_dir, "model.rxns.json")) as fin:
         rxns = json.load(fin)
-    with open(os.path.join(model_dir, 'model.rxnNames.json')) as fin:
+    with open(os.path.join(model_dir, "model.rxnNames.json")) as fin:
         rxnNames = json.load(fin)
-    with open(os.path.join(model_dir, 'model.lb.json')) as fin:
+    with open(os.path.join(model_dir, "model.lb.json")) as fin:
         lbs = json.load(fin)
-    with open(os.path.join(model_dir, 'model.ub.json')) as fin:
+    with open(os.path.join(model_dir, "model.ub.json")) as fin:
         ubs = json.load(fin)
-    with open(os.path.join(model_dir, 'model.subSystems.json')) as fin:
+    with open(os.path.join(model_dir, "model.subSystems.json")) as fin:
         subSystems = json.load(fin)
-    with open(os.path.join(model_dir, 'model.rules.json')) as fin:
+    with open(os.path.join(model_dir, "model.rules.json")) as fin:
         rules = json.load(fin)
 
     groups = zip(rxns, rxnNames, lbs, ubs, subSystems, rules)
     reactions = []
     for rxn, name, lb, ub, subsystem, rule in groups:
-
         reaction = Reaction()
         reaction.id = rxn
         reaction.name = name
@@ -92,28 +87,25 @@ def load(model_name, species, metabolic_model_dir=MODEL_DIR):
     # Other optional reaction files
 
     # Meta-data
-    fname = os.path.join(model_dir, 'rxnMeta.txt')
+    fname = os.path.join(model_dir, "rxnMeta.txt")
     if os.path.exists(fname):
         # quoting=3 setting ignores " in file
-        rxnMeta = pd.read_csv(fname, sep='\t', index_col=0, quoting=3)
+        rxnMeta = pd.read_csv(fname, sep="\t", index_col=0, quoting=3)
 
         for i, reaction in enumerate(reactions):
-            reaction.meta = _fix_dtypes(
-                rxnMeta.loc[reaction.id].to_dict()
-            )
+            reaction.meta = _fix_dtypes(rxnMeta.loc[reaction.id].to_dict())
 
     # Then metabolites
-    with open(os.path.join(model_dir, 'model.mets.json')) as fin:
+    with open(os.path.join(model_dir, "model.mets.json")) as fin:
         met_ids = json.load(fin)
-    with open(os.path.join(model_dir, 'model.metNames.json')) as fin:
+    with open(os.path.join(model_dir, "model.metNames.json")) as fin:
         metNames = json.load(fin)
-    with open(os.path.join(model_dir, 'model.metFormulas.json')) as fin:
+    with open(os.path.join(model_dir, "model.metFormulas.json")) as fin:
         metFormulas = json.load(fin)
 
     species = []
     compartment_re = re.compile("\[(.+)\]")
     for met_id, name, formula in zip(met_ids, metNames, metFormulas):
-
         met = Species()
         met.id = met_id
         met.name = name
@@ -125,26 +117,24 @@ def load(model_name, species, metabolic_model_dir=MODEL_DIR):
     # Other optional metabolite files
 
     # Meta-data
-    fname = os.path.join(model_dir, 'metMeta.txt')
+    fname = os.path.join(model_dir, "metMeta.txt")
     if os.path.exists(fname):
         # quoting=3 setting ignores " in file
-        metMeta = pd.read_csv(fname, sep='\t', index_col=0, quoting=3)
+        metMeta = pd.read_csv(fname, sep="\t", index_col=0, quoting=3)
 
         for i, met in enumerate(species):
-            met.meta = _fix_dtypes(
-                metMeta.loc[met.id].to_dict()
-            )
+            met.meta = _fix_dtypes(metMeta.loc[met.id].to_dict())
 
     # Then Smat
-    with open(os.path.join(model_dir, 'model.S.json')) as fin:
+    with open(os.path.join(model_dir, "model.S.json")) as fin:
         Smat = json.load(fin)
         for entry in Smat:
             i = entry[0]
             j = entry[1]
             coef = entry[2]
 
-            species_id = species[i-1].id
-            reaction = reactions[j-1]
+            species_id = species[i - 1].id
+            reaction = reactions[j - 1]
 
             if coef > 0:
                 reaction.products[species_id] = coef
@@ -161,11 +151,12 @@ def load(model_name, species, metabolic_model_dir=MODEL_DIR):
 
     return model
 
+
 # ----------------------------------------
 # Utility functions - used to parse gene association string
 # ----------------------------------------
 
-_TOKEN_RE = re.compile('x\(\d+\)|\(|\)|\||&')
+_TOKEN_RE = re.compile("x\(\d+\)|\(|\)|\||&")
 
 # Breakdown of RE
 """ x\(\d+\) |
@@ -177,7 +168,6 @@ _TOKEN_RE = re.compile('x\(\d+\)|\(|\)|\||&')
 
 
 def _eval_rule_str(rule, genes):
-
     # Return None if there is no gene-product rule
     if len(rule) == 0:
         return None
@@ -189,11 +179,11 @@ def _eval_rule_str(rule, genes):
     group_stack = []
     current_group = []
     for term in token_elem:
-        if term == '(':
+        if term == "(":
             # Start a new group
             group_stack.append(current_group)
             current_group = []
-        elif term == ')':
+        elif term == ")":
             # End the group
             prev_group = group_stack.pop()
             prev_group.append(tuple(current_group))
@@ -206,11 +196,10 @@ def _eval_rule_str(rule, genes):
     return _eval_node(elem, genes)
 
 
-_ELEM_RE = re.compile('x\((\d+)\)$')
+_ELEM_RE = re.compile("x\((\d+)\)$")
 
 
 def _eval_node(elem, genes):
-
     # resolve each node
     # x(2343) -> association of type gene
     # tuple -> association
@@ -228,12 +217,12 @@ def _eval_node(elem, genes):
                 gene = genes[index]
 
                 assoc = Association()
-                assoc.type = 'gene'
+                assoc.type = "gene"
                 assoc.gene = gene
                 resolved.append(assoc)
 
             else:
-                assert (node == '|' or node == '&')
+                assert node == "|" or node == "&"
                 resolved.append(node)  # must be an operator
         elif isinstance(node, Association):
             resolved.append(node)
@@ -248,14 +237,14 @@ def _eval_node(elem, genes):
     assert len(resolved) % 2 == 1
 
     # Look for cases of all | or all & to avoid deep nesting
-    found_or = '|' in resolved
-    found_and = '&' in resolved
+    found_or = "|" in resolved
+    found_and = "&" in resolved
 
     if found_or and not found_and:
         nodes = [x for i, x in enumerate(resolved) if i % 2 == 0]
 
         assoc = Association()
-        assoc.type = 'or'
+        assoc.type = "or"
         assoc.children = nodes
         return assoc
 
@@ -263,7 +252,7 @@ def _eval_node(elem, genes):
         nodes = [x for i, x in enumerate(resolved) if i % 2 == 0]
 
         assoc = Association()
-        assoc.type = 'and'
+        assoc.type = "and"
         assoc.children = nodes
         return assoc
 
@@ -271,18 +260,18 @@ def _eval_node(elem, genes):
         # partition on | and recurse
 
         # Find a middle | to keep trees balanced
-        or_indices = [i for i,e in enumerate(resolved) if e == "|"]
-        mid = int(len(or_indices)/2)
+        or_indices = [i for i, e in enumerate(resolved) if e == "|"]
+        mid = int(len(or_indices) / 2)
         i = or_indices[mid]
 
         left = tuple(resolved[0:i])
-        right = tuple(resolved[i + 1:])
+        right = tuple(resolved[i + 1 :])
 
         left = _eval_node(left, genes)
         right = _eval_node(right, genes)
 
         assoc = Association()
-        assoc.type = 'or'
+        assoc.type = "or"
         assoc.children = [left, right]
         return assoc
 
