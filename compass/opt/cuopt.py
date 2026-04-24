@@ -174,7 +174,7 @@ class CuoptOptimizer(Optimizer):
         original_ub = {}
         original_lb = {}
         # If we added vars or constraints, then the problem will be re-initialized
-        # cecause cuOpt does not support deleting variables or constraints.
+        # because cuOpt does not support deleting variables or constraints.
         added_vars = delta.added_secretion or delta.added_uptake
 
         for met_id, rxn_id in delta.added_secretion.items():
