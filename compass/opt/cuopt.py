@@ -74,7 +74,8 @@ from compass.opt.base import LinearProgramDelta, Optimizer, Solution
 
 logger = logging.getLogger("compass")
 
-def get_cuopt_config(threads: int | None = None, method: int | None = None) -> dict[str, Any]:
+def get_cuopt_config(threads: int | None = None, method: int | None = None,
+                     overrides: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     Docstring for get_cuopt_config
 
@@ -82,6 +83,9 @@ def get_cuopt_config(threads: int | None = None, method: int | None = None) -> d
     :type threads: int | None
     :param method: The method for solving linear programs
     :type method: int | None
+    :param overrides: Optional dict of cuOpt parameter overrides using
+        native cuOpt constant names.
+    :type overrides: dict[str, Any] | None
     :return: Dictionary mapping cuopt settings to values
     :rtype: dict[str, Any]
     """
@@ -89,7 +93,7 @@ def get_cuopt_config(threads: int | None = None, method: int | None = None) -> d
         threads = 1
     if method is None:
         method = 0
-    return {
+    config = {
         # N.B. cuopt does not actually respect this flag, but should be resolved in coming PR
         CUOPT_LOG_TO_CONSOLE: False,
         CUOPT_PRESOLVE: False,
@@ -104,6 +108,9 @@ def get_cuopt_config(threads: int | None = None, method: int | None = None) -> d
         # Each problem should take well under 120 seconds.
         CUOPT_TIME_LIMIT: 120,
     }
+    if overrides:
+        config.update(overrides)
+    return config
 
 
 class CuoptOptimizer(Optimizer):

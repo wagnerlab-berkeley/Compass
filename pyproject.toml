@@ -57,6 +57,9 @@ doc = [
     "sphinx-copybutton",
     "pandas",
 ]
+highs = [
+    "highspy",
+]
 test = [
     "pytest",
     "coverage",

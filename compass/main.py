@@ -390,8 +390,15 @@ def parseArgs():
 
     parser.add_argument("--optimizer",
                         help = "Select an optimization software to solve flux balance analysis problems with. Select an optimizer with --help to see options specific to the optimizer",
-                        choices=["gurobi", "cuopt"],
+                        choices=["gurobi", "cuopt", "highs"],
                         default="gurobi")
+
+    parser.add_argument("--solver-config",
+                        help = "Solver-specific configuration overrides. Accepts inline JSON "
+                               "(e.g. '{\"output_flag\": true}') or a path to a JSON file. "
+                               "Keys use backend-native option names and override the defaults.",
+                        default=None,
+                        metavar="JSON_OR_FILE")
 
     # Parse known args first to check for optimizer setting
     args, _ = parser.parse_known_args()
@@ -400,6 +407,8 @@ def parseArgs():
         default_method = 1 #pdlp 
     elif args.optimizer == "gurobi":
         default_method = 4
+    elif args.optimizer == "highs":
+        default_method = 1  # IPM (barrier)
     
     if args.lpmethod is None:
         args.lpmethod = default_method
@@ -411,6 +420,20 @@ def parseArgs():
     args = vars(args)  # Convert to a Dictionary
 
     load_config(args)
+
+    # Parse --solver-config: inline JSON string or path to JSON file
+    solver_config_raw = args.get("solver_config")
+    if solver_config_raw is not None:
+        if os.path.isfile(solver_config_raw):
+            with open(solver_config_raw) as f:
+                args["solver_config"] = json.load(f)
+        else:
+            try:
+                args["solver_config"] = json.loads(solver_config_raw)
+            except json.JSONDecodeError as e:
+                parser.error(f"--solver-config: invalid JSON and not a file path: {e}")
+    else:
+        args["solver_config"] = {}
 
     if not args['species']:
         if args['data'] or args['data_mtx']:

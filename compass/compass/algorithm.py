@@ -502,14 +502,19 @@ def initialize_optimization(model: MetabolicModel, args) -> Optimizer:
     """
     num_threads = args.get('num_threads')
     lpmethod = args.get('lpmethod')
+    solver_config = args.get('solver_config', {})
     if args['optimizer'] == "gurobi":
         credentials = utils.get_gurobi_credentials()
-        config = get_gurobi_config(num_threads, lpmethod)
+        config = get_gurobi_config(num_threads, lpmethod, overrides=solver_config)
         return GurobiOptimizer(model, config, credentials=credentials)
     elif args['optimizer'] == "cuopt":
         from compass.opt.cuopt import CuoptOptimizer, get_cuopt_config
-        config = get_cuopt_config(num_threads, method=lpmethod)
+        config = get_cuopt_config(num_threads, method=lpmethod, overrides=solver_config)
         return CuoptOptimizer(model, config)
+    elif args['optimizer'] == "highs":
+        from compass.opt.highs import HighsOptimizer, get_highs_config
+        config = get_highs_config(num_threads, method=lpmethod, overrides=solver_config)
+        return HighsOptimizer(model, config)
 
 def maximize_reaction(
         model: MetabolicModel, 
