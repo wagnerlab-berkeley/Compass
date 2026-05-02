@@ -408,7 +408,7 @@ def parseArgs():
     elif args.optimizer == "gurobi":
         default_method = 4
     elif args.optimizer == "highs":
-        default_method = 1  # IPM (barrier)
+        default_method = 0  # Simplex (warm-start compatible)
     
     if args.lpmethod is None:
         args.lpmethod = default_method

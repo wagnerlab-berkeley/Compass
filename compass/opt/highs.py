@@ -3,6 +3,7 @@ import threading
 from typing import Any
 
 import highspy
+import numpy as np
 
 from compass.globals import BETA, EXCHANGE_LIMIT
 from compass.models.MetabolicModel import MetabolicModel
@@ -25,10 +26,10 @@ def get_highs_config(threads: int | None = None, method: int | None = None,
     if threads is None:
         threads = 1
     if method is None:
-        method = 1  # 0: Simplex, 1: IPM
+        method = 0  # 0: Simplex (best for warm-start), 1: IPM
     config = {
         "output_flag": False,           # Disable all output
-        "presolve": "on",               # Enable presolve
+        "presolve": "off",              # Disable presolve (incompatible with warm-start basis)
         "threads": threads,             # Number of threads
         "solver": ["simplex", "ipm"][method],
         "primal_feasibility_tolerance": 1e-9,
@@ -45,6 +46,11 @@ def get_highs_config(threads: int | None = None, method: int | None = None,
 class HighsOptimizer(Optimizer):
     """
     Highs-based implementation of the Optimizer.
+
+    Warm-start strategy: all possible variables (including synthetic exchange
+    reactions) and constraints are pre-allocated at build time. Deltas are
+    applied via in-place bound/cost changes only rather than adding/removing columns
+    so HiGHS preserves the simplex basis across consecutive solves.
     """
 
     def __init__(self, model: MetabolicModel, config: dict[str, Any]):
@@ -54,7 +60,9 @@ class HighsOptimizer(Optimizer):
 
     def __create_base_model(self):
         """
-        Builds the initial Highs model from the provided metabolic model.
+        Builds the initial Highs model from the provided metabolic model,
+        including pre-allocated synthetic exchange variables (disabled via
+        zero bounds).
         """
         problem = highspy.Highs()
 
@@ -72,6 +80,29 @@ class HighsOptimizer(Optimizer):
             var = problem.addVariable(lb=lb, ub=ub, name=reaction.id)
             variables[id] = var
 
+        # Pre-allocate synthetic exchange variables.
+        # These are added with bounds [0, 0] (disabled) and the correct
+        # stoichiometric coefficient so they can be toggled via bound changes.
+        synthetic = self.model.synthetic_exchange_reactions
+        exchange_vars = {}
+
+        # We'll collect (met_id, rxn_id, coeff, ub_when_active) for adding to constraints below
+        pending_exchange = []
+
+        for met_id, rxn_id in synthetic['secretion'].items():
+            var = problem.addVariable(lb=0.0, ub=0.0, name=rxn_id)
+            variables[rxn_id] = var
+            exchange_vars[rxn_id] = var
+            # Secretion: metabolite is consumed (coefficient -1 in mass balance)
+            pending_exchange.append((met_id, rxn_id, -1.0))
+
+        for met_id, rxn_id in synthetic['uptake'].items():
+            var = problem.addVariable(lb=0.0, ub=0.0, name=rxn_id)
+            variables[rxn_id] = var
+            exchange_vars[rxn_id] = var
+            # Uptake: metabolite is produced (coefficient +1 in mass balance)
+            pending_exchange.append((met_id, rxn_id, 1.0))
+
         # Add metabolites as constraints
         constraints = {}
         for metab_id, stoichiometry in self.model.SMAT.items():
@@ -87,69 +118,81 @@ class HighsOptimizer(Optimizer):
             constraint = problem.addConstr(0 == expr, name=metab_id)
             constraints[metab_id] = constraint
 
-        return problem, variables, constraints
-    
+        # Wire up pre-allocated exchange variables to their metabolite constraints
+        for met_id, rxn_id, coeff in pending_exchange:
+            if met_id in constraints:
+                problem.chgCoeff(constraints[met_id], exchange_vars[rxn_id], coeff)
+
+        return problem, variables, constraints, exchange_vars
+
     def __init_base_model(self):
-        problem, variables, constraints = self.__create_base_model()
+        problem, variables, constraints, exchange_vars = self.__create_base_model()
         self.problem = problem
         self.variables = variables
         self.constraints = constraints
+        self.exchange_vars = exchange_vars
+
+        # Cache base bounds for all variables for efficient revert.
+        # Indexed by column index for direct use with changeColBounds.
+        lp = self.problem.getLp()
+        n = self.problem.getNumCol()
+        self._base_lb = list(lp.col_lower_[:n])
+        self._base_ub = list(lp.col_upper_[:n])
 
     def solve(self, delta: LinearProgramDelta) -> Solution:
         """
-        Applies the delta, solves the model, and returns the solution.
-        Reverts changes to the model after solving, to serve as tabula rasa for the next delta.
+        Applies the delta via in-place bound/cost changes, solves the model,
+        and reverts. No structural add/delete — basis is preserved for warm-start.
         """
-        # Store original state to revert later
-        # With highs, we should always be able to revert the delta
-        original_bounds = {}
-        added_vars = []
-        added_constraints = []
+        # Track which columns had bounds changed so we can revert only those
+        changed_cols = []
 
+        # Enable pre-allocated exchange variables by opening their bounds (B1).
         for met_id, rxn_id in delta.added_secretion.items():
-            met_constr = self.constraints[met_id]
-            rxn_var = self.problem.addVariable(lb=0.0, ub=self.model.maximum_flux, name=rxn_id)
-            added_vars.append(rxn_var)
-            # Add secretion to metabolite's constraint as a reduction in metabolite
-            self.problem.chgCoeff(met_constr, rxn_var, -1.0)
+            var = self.variables[rxn_id]
+            col = int(var)
+            changed_cols.append(col)
+            self.problem.changeColBounds(col, 0.0, self.model.maximum_flux)
 
         for met_id, rxn_id in delta.added_uptake.items():
-            met_constr = self.constraints[met_id]
-            rxn_var = self.problem.addVariable(lb=0.0, ub=EXCHANGE_LIMIT, name=rxn_id)
-            added_vars.append(rxn_var)
-            # Add uptake to metabolite's constraint as an increase in metabolite
-            self.problem.chgCoeff(met_constr, rxn_var, 1.0)
+            var = self.variables[rxn_id]
+            col = int(var)
+            changed_cols.append(col)
+            self.problem.changeColBounds(col, 0.0, EXCHANGE_LIMIT)
 
-        # Close all blocked reactions by setting upper bound to lower bound
-        # and store previous bounds so they can be restored later
-        lp = self.problem.getLp()
+        # Block reactions by setting upper bound to lower bound
         for rxn_id in delta.blocked_reactions:
             var = self.variables[rxn_id]
-            old_lb = lp.col_lower_[int(var)]
-            old_ub = lp.col_upper_[int(var)]
-            original_bounds[rxn_id] = (old_lb, old_ub)
-            self.problem.changeColBounds(int(var), old_lb, old_lb)
+            col = int(var)
+            changed_cols.append(col)
+            self.problem.changeColBounds(col, self._base_lb[col], self._base_lb[col])
 
+        # High-flux constraints via lower bound change instead of adding constraint rows
         for rxn_id, limit in delta.high_flux.items():
             var = self.variables[rxn_id]
-            added_constraints.append(self.problem.addConstr(var >= limit, name=f"{rxn_id}_REACTION_OPT"))
+            col = int(var)
+            changed_cols.append(col)
+            self.problem.changeColBounds(col, limit, self._base_ub[col])
 
-        # Construct objective linear expression by summing all coefficient * reaction pairs.
-        obj_expr = sum([coeff * self.variables[id] for id, coeff in delta.objective.items()])
+        # Set objective via batch cost change.
+        n = self.problem.getNumCol()
+        costs = np.zeros(n, dtype=np.float64)
+        for rxn_id, coeff in delta.objective.items():
+            if rxn_id in self.variables:
+                costs[int(self.variables[rxn_id])] = coeff
+
+        cols = np.arange(n, dtype=np.int32)
+        self.problem.changeColsCost(n, cols, costs)
 
         if delta.sense == "max":
-            sense = highspy.ObjSense.kMaximize
+            self.problem.changeObjectiveSense(highspy.ObjSense.kMaximize)
         else:
-            sense = highspy.ObjSense.kMinimize
-        self.problem.setObjective(obj_expr, sense)
+            self.problem.changeObjectiveSense(highspy.ObjSense.kMinimize)
 
         self.solve_problem()
 
         model_status = self.problem.getModelStatus()
-        if model_status == highspy.HighsModelStatus.kOptimal:
-            success = True
-        else:
-            success = False
+        success = model_status == highspy.HighsModelStatus.kOptimal
 
         if success:
             info = self.problem.getInfoValue("objective_function_value")
@@ -157,22 +200,9 @@ class HighsOptimizer(Optimizer):
         else:
             obj_value = None
 
-        # Revert the delta
-
-        # Restore bounds
-        for rxn_id, (lb, ub) in original_bounds.items():
-            var = self.variables[rxn_id]
-            self.problem.changeColBounds(int(var), lb, ub)
-
-        # Remove added variables and constraints
-        # Delete in reverse index order so that index shifts don't invalidate
-        # remaining highs_var/highs_cons objects. Base variables/constraints are
-        # unaffected since they always have lower indices than added ones.
-        for var in sorted(added_vars, key=lambda v: int(v), reverse=True):
-            self.problem.deleteVariable(var, self.variables)
-
-        for constr in sorted(added_constraints, key=lambda c: int(c), reverse=True):
-            self.problem.removeConstr(constr)
+        # Revert all bound changes
+        for col in changed_cols:
+            self.problem.changeColBounds(col, self._base_lb[col], self._base_ub[col])
 
         return Solution(success=success, status=str(model_status), obj_value=obj_value)
 
