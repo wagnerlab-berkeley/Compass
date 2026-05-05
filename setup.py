@@ -27,7 +27,8 @@ setup(
         'python-igraph>=0.9', #Need the version to be high enough fgo
         'leidenalg>=0.8.2',
         'anndata',
-        'gurobipy>=11.0.0'],
+        'gurobipy>=11.0.0',
+        'highspy>=1.14.0'],
 
     author="Charles Chien",
     author_email="charleschien101@gmail.com",

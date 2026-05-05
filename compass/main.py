@@ -390,7 +390,7 @@ def parseArgs():
 
     parser.add_argument("--optimizer",
                         help = "Select an optimization software to solve flux balance analysis problems with. Select an optimizer with --help to see options specific to the optimizer",
-                        choices=["gurobi", "cuopt"],
+                        choices=["gurobi", "cuopt", "highs"],
                         default="gurobi")
 
     # Parse known args first to check for optimizer setting
@@ -400,6 +400,8 @@ def parseArgs():
         default_method = 1 #pdlp 
     elif args.optimizer == "gurobi":
         default_method = 4
+    elif args.optimizer == "highs":
+        default_method = 0  # Simplex (warm-start compatible)
     
     if args.lpmethod is None:
         args.lpmethod = default_method

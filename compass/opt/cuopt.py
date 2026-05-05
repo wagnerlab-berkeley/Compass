@@ -76,8 +76,6 @@ logger = logging.getLogger("compass")
 
 def get_cuopt_config(threads: int | None = None, method: int | None = None) -> dict[str, Any]:
     """
-    Docstring for get_cuopt_config
-
     :param threads: Number of threads cuopt solver should use
     :type threads: int | None
     :param method: The method for solving linear programs
@@ -174,7 +172,7 @@ class CuoptOptimizer(Optimizer):
         original_ub = {}
         original_lb = {}
         # If we added vars or constraints, then the problem will be re-initialized
-        # cecause cuOpt does not support deleting variables or constraints.
+        # because cuOpt does not support deleting variables or constraints.
         added_vars = delta.added_secretion or delta.added_uptake
 
         for met_id, rxn_id in delta.added_secretion.items():

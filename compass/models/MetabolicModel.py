@@ -73,6 +73,7 @@ class MetabolicModel(object):
         self.media = 'NoMedia'
         self.metabolic_model_dir = metabolic_model_dir
         self._SMAT = None
+        self._synthetic_exchange = None
 
     def getReactions(self):
         """
@@ -221,7 +222,47 @@ class MetabolicModel(object):
             return [reaction_id for reaction_id, _ in smat[metabolite_id]]
         else:
             return []
-    
+
+    @property
+    def synthetic_exchange_reactions(self):
+        """
+        Determines which metabolites lack exchange reactions and would need
+        synthetic uptake/secretion variables for flux balance analysis.
+
+        Returns a dict with two keys:
+            'secretion': dict mapping metabolite_id -> synthetic reaction id
+            'uptake': dict mapping metabolite_id -> synthetic reaction id
+
+        This mirrors the logic in compass_exchange() / maximize_metab_range()
+        but computes it once for the whole model. Result is cached.
+        """
+        if self._synthetic_exchange is not None:
+            return self._synthetic_exchange
+
+        synthetic_secretion = {}
+        synthetic_uptake = {}
+
+        for met_id in self.SMAT:
+            rxn_ids = self.associated_reactions(met_id)
+            reactions = [self.reactions[x] for x in rxn_ids]
+
+            has_uptake = False
+            has_secretion = False
+
+            for reaction in reactions:
+                if reaction.is_exchange and met_id in reaction.products:
+                    has_uptake = True
+                elif reaction.is_exchange and met_id in reaction.reactants:
+                    has_secretion = True
+
+            if not has_secretion:
+                synthetic_secretion[met_id] = met_id + "_SECRETION"
+            if not has_uptake:
+                synthetic_uptake[met_id] = met_id + "_UPTAKE"
+
+        self._synthetic_exchange = {'secretion': synthetic_secretion, 'uptake': synthetic_uptake}
+        return self._synthetic_exchange
+
     def getSMAT_transposed(self):
         """
         Returns a sparse form of the s-matrix

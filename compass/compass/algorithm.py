@@ -507,9 +507,20 @@ def initialize_optimization(model: MetabolicModel, args) -> Optimizer:
         config = get_gurobi_config(num_threads, lpmethod)
         return GurobiOptimizer(model, config, credentials=credentials)
     elif args['optimizer'] == "cuopt":
-        from compass.opt.cuopt import CuoptOptimizer, get_cuopt_config
+        try:
+            from compass.opt.cuopt import CuoptOptimizer, get_cuopt_config
+        except ImportError as e:
+            raise ImportError(
+                "The cuopt optimizer requires NVIDIA cuOpt, which is not installed. "
+                "cuOpt requires a GPU and an NVIDIA NGC API key. "
+                "See https://developer.nvidia.com/cuopt-logistics-optimization for details."
+            ) from e
         config = get_cuopt_config(num_threads, method=lpmethod)
         return CuoptOptimizer(model, config)
+    elif args['optimizer'] == "highs":
+        from compass.opt.highs import HighsOptimizer, get_highs_config
+        config = get_highs_config(num_threads, method=lpmethod)
+        return HighsOptimizer(model, config)
 
 def maximize_reaction(
         model: MetabolicModel, 
