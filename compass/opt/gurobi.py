@@ -11,22 +11,16 @@ from .base import Optimizer, LinearProgramDelta, Solution
 logger = logging.getLogger("compass")
 
 
-def get_gurobi_config(threads: int | None = None, method: int | None = None,
-                      overrides: dict[str, Any] | None = None) -> dict[str, Any]:
+def get_gurobi_config(threads: int | None = None, method: int | None = None) -> dict[str, Any]:
     """
     Returns the Gurobi configuration parameters for Compass.
     These defaults are chosen for numerical stability and performance.
-
-    Args:
-        overrides: Optional dict of Gurobi parameter overrides using Gurobi
-            parameter names (e.g. OptimalityTol, BarConvTol, OutputFlag).
-            Names are resolved via getattr(GRB.Param, key).
     """
     if threads is None:
         threads = 1
     if method is None:
         method = 4
-    config = {
+    return {
         GRB.Param.OutputFlag: 0,  # Disable all output
         GRB.Param.LogToConsole: 0,  # Disable console output
         GRB.Param.NumericFocus: 3,  # Equivalent to numerical emphasis in CPLEX
@@ -36,14 +30,6 @@ def get_gurobi_config(threads: int | None = None, method: int | None = None,
         GRB.Param.Threads: threads,  # Set the number of threads to use
         GRB.Param.Method: method,  # 0: Automatic, 1: Primal Simplex, 2: Dual Simplex, etc.
     }
-    if overrides:
-        for key, value in overrides.items():
-            param = getattr(GRB.Param, key, None)
-            if param is None:
-                raise ValueError(f"Unknown Gurobi parameter: '{key}'. "
-                                 f"Use Gurobi parameter names (e.g. OptimalityTol, BarConvTol).")
-            config[param] = value
-    return config
 
 class GurobiOptimizer(Optimizer):
     """

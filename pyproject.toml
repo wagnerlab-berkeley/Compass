@@ -30,6 +30,7 @@ dependencies = [
     'leidenalg>=0.8.2',
     'anndata',
     'gurobipy>=11.0.0',
+    'highspy>=1.14.0',
     # for debug logging (referenced from the issue template)
     "session-info",
 ]
@@ -56,9 +57,6 @@ doc = [
     "ipython",
     "sphinx-copybutton",
     "pandas",
-]
-highs = [
-    "highspy",
 ]
 test = [
     "pytest",

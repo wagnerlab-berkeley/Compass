@@ -12,22 +12,16 @@ from .base import Optimizer, LinearProgramDelta, Solution
 logger = logging.getLogger("compass")
 
 
-def get_highs_config(threads: int | None = None, method: int | None = None,
-                     overrides: dict[str, Any] | None = None) -> dict[str, Any]:
+def get_highs_config(threads: int | None = None, method: int | None = None) -> dict[str, Any]:
     """
     Returns the HiGHS configuration parameters for Compass.
     These defaults are chosen for numerical stability and performance.
-
-    Args:
-        overrides: Optional dict of HiGHS option overrides using native
-            HiGHS option names (e.g. output_flag, primal_feasibility_tolerance).
-            Also supports the custom key 'solve_timeout'.
     """
     if threads is None:
         threads = 1
     if method is None:
         method = 0  # 0: Simplex (best for warm-start), 1: IPM
-    config = {
+    return {
         "output_flag": False,           # Disable all output
         "presolve": "off",              # Disable presolve (incompatible with warm-start basis)
         "threads": threads,             # Number of threads
@@ -38,9 +32,6 @@ def get_highs_config(threads: int | None = None, method: int | None = None,
         # Per-solve timeout in seconds via cancelSolve callbacks.
         "solve_timeout": 30.0,
     }
-    if overrides:
-        config.update(overrides)
-    return config
 
 
 class HighsOptimizer(Optimizer):
