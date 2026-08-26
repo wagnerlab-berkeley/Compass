@@ -91,8 +91,10 @@ def get_cuopt_config(threads: int | None = None, method: int | None = None) -> d
         method = 0
     return {
         # N.B. cuopt does not actually respect this flag, but should be resolved in coming PR
-        CUOPT_LOG_TO_CONSOLE: False,
-        CUOPT_PRESOLVE: False,
+        # cuopt-cu12's solver_settings setter rejects Python bool (Cython's int check
+        # excludes the bool subtype), so these must be plain ints, not True/False.
+        CUOPT_LOG_TO_CONSOLE: int(False),
+        CUOPT_PRESOLVE: int(False),
         CUOPT_NUM_CPU_THREADS: threads,
         # TODO: NVIDIA does not really explain these, but their docs indicate stable3 is generally the best
         CUOPT_PDLP_SOLVER_MODE: PDLPSolverMode.Stable3,
@@ -100,7 +102,7 @@ def get_cuopt_config(threads: int | None = None, method: int | None = None) -> d
         # The methods are concurrent, pdlp, dual simplex, barrier enumerated as 0,1,2,3
         CUOPT_METHOD: method,
         # Determinism is preferrable for replication.
-        CUOPT_CUDSS_DETERMINISTIC: True,
+        CUOPT_CUDSS_DETERMINISTIC: int(True),
         # Each problem should take well under 120 seconds.
         CUOPT_TIME_LIMIT: 120,
     }
