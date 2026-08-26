@@ -503,8 +503,8 @@ def entry():
 
     args = parseArgs()
 
-    if (not args['set_license']) and (not os.path.exists(os.path.join(globals.LICENSE_DIR, 'gurobi.lic'))):
-        print('A Gurobi license is required to run Compass. Run Compass again with \'--set-license <PATH_TO_LICENSE>\' to save license.')
+    if (args['optimizer'] == 'gurobi') and (not args['set_license']) and (not os.path.exists(os.path.join(globals.LICENSE_DIR, 'gurobi.lic'))):
+        print('A Gurobi license is required to run Compass with --optimizer gurobi. Run Compass again with \'--set-license <PATH_TO_LICENSE>\' to save license, or select a different --optimizer.')
         return
     elif args['set_license']:
 
